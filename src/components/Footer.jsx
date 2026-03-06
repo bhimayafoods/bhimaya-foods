@@ -16,8 +16,8 @@ function Footer() {
 
         <div>
           <h4 className="font-semibold mb-4">Reach Us</h4>
-          <p>Email: hello@bhimayafoods.com</p>
-          <p>WhatsApp: +91 9290676791</p>
+          <p>Email: bhimayafoods@gmail.com</p>
+          <p>WhatsApp: +91 9493023030</p>
         </div>
       </div>
 

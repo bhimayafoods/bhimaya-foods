@@ -16,7 +16,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const WHATSAPP_NUMBER = "919290676791";
+  const WHATSAPP_NUMBER = "919493023030";
 
   const addToCart = (product) => {
     const existing = cart.find((item) => item.id === product.id);
@@ -71,7 +71,13 @@ function App() {
       message += `• ${item.name} (x${item.quantity}) - ₹${item.price * item.quantity}%0A`;
     });
 
-    message += `%0A*Total: ₹${total}*`;
+    if (delivery > 0) {
+      message += `%0A*Subtotal: ₹${total}*`;
+      message += `%0A*Delivery Charge: ₹${delivery}*`;
+    } else {
+      message += `%0A*Free Delivery !*`;
+    }
+    message += `%0A*Total: ₹${finalTotal}*`;
 
     window.open(
       `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`,
@@ -107,7 +113,7 @@ function App() {
     <>
       <Navbar cartCount={cart.length} openCart={() => setIsCartOpen(true)} />
       <Hero />
-      <TopRibbon/>
+      <TopRibbon />
       <Products
         products={PRODUCTS}
         cart={cart}

@@ -38,7 +38,7 @@ function Navbar({ cartCount, openCart }) {
             Home
           </a>
           <a href="#products" className="hover:text-secondary transition">
-            Our Snacks
+            Our Products
           </a>
           <a href="#about" className="hover:text-secondary transition">
             Our Story

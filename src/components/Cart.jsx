@@ -1,12 +1,12 @@
-  function Cart({
-    cart,
-    total,
-    isOpen,
-    closeCart,
-    increaseQuantity,
-    decreaseQuantity,
-    checkout,
-  }) {
+function Cart({
+  cart,
+  total,
+  isOpen,
+  closeCart,
+  increaseQuantity,
+  decreaseQuantity,
+  checkout,
+}) {
 
   const DELIVERY_CHARGE = 50;
   const FREE_LIMIT = 499;
@@ -16,8 +16,8 @@
     cart.length === 0
       ? 0
       : total >= FREE_LIMIT
-      ? 0
-      : DELIVERY_CHARGE;
+        ? 0
+        : DELIVERY_CHARGE;
 
   const finalTotal = total + delivery;
 
@@ -33,9 +33,8 @@
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-lg z-50 flex flex-col transform transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-lg z-50 flex flex-col transform transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {/* Header */}
         <div className="p-4 sm:p-6 flex justify-between items-center border-b">
@@ -129,11 +128,10 @@
           <button
             onClick={checkout}
             disabled={cart.length === 0}
-            className={`w-full py-3 rounded-full mt-4 transition ${
-              cart.length === 0
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-primary text-white hover:opacity-90"
-            }`}
+            className={`w-full py-3 rounded-full mt-4 transition ${cart.length === 0
+              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+              : "bg-primary text-white hover:opacity-90"
+              }`}
           >
             Proceed to WhatsApp
           </button>

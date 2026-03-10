@@ -1,5 +1,6 @@
 function Cart({
   cart,
+  products,
   total,
   isOpen,
   closeCart,
@@ -10,6 +11,17 @@ function Cart({
 
   const DELIVERY_CHARGE = 50;
   const FREE_LIMIT = 499;
+
+  const isItemOutOfStock = (item) => {
+    const liveProduct = products?.find(p => p.id === item.id);
+    return (
+      liveProduct?.quantity?.toLowerCase().includes('out of stock') ||
+      liveProduct?.description?.toLowerCase().includes('out of stock') ||
+      liveProduct?.quantity === '0'
+    );
+  };
+
+  const hasOutOfStockItem = cart.some(item => isItemOutOfStock(item));
 
   // ✅ Correct Delivery Logic
   const delivery =
@@ -51,40 +63,48 @@ function Cart({
               Your cart is empty.
             </p>
           ) : (
-            cart.map((item) => (
-              <div key={item.id} className="flex items-center space-x-4">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
+            cart.map((item) => {
+              const outOfStock = isItemOutOfStock(item);
+              return (
+                <div key={item.id} className={`flex items-center space-x-4 ${outOfStock ? 'opacity-70' : ''}`}>
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
 
-                <div className="flex-1">
-                  <h4 className="font-semibold">{item.name}</h4>
-                  <p className="text-sm text-gray-500">
-                    ₹{item.price * item.quantity}
-                  </p>
+                  <div className="flex-1">
+                    <h4 className="font-semibold">{item.name}</h4>
+                    {outOfStock ? (
+                      <p className="text-xs text-red-500 font-bold">⚠️ Out of Stock — Please remove</p>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        ₹{item.price * item.quantity}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => decreaseQuantity(item.id)}
+                      className="w-7 h-7 border border-primary rounded-full"
+                    >
+                      -
+                    </button>
+
+                    <span>{item.quantity}</span>
+
+                    <button
+                      onClick={() => !outOfStock && increaseQuantity(item.id)}
+                      disabled={outOfStock}
+                      className={`w-7 h-7 border rounded-full transition ${outOfStock ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 'border-primary'}`}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => decreaseQuantity(item.id)}
-                    className="w-7 h-7 border border-primary rounded-full"
-                  >
-                    -
-                  </button>
-
-                  <span>{item.quantity}</span>
-
-                  <button
-                    onClick={() => increaseQuantity(item.id)}
-                    className="w-7 h-7 border border-primary rounded-full"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

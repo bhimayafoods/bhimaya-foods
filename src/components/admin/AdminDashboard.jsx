@@ -21,6 +21,7 @@ const AdminDashboard = () => {
     const [isStoreOpen, setIsStoreOpen] = useState(true);
     const [closedMessage, setClosedMessage] = useState('');
     const [promotionalBanner, setPromotionalBanner] = useState('🚚 Free Delivery for orders above ₹499+ 🎉');
+    const [freeDeliveryLimit, setFreeDeliveryLimit] = useState(499);
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
     const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
     const [settingsLoading, setSettingsLoading] = useState(true);
@@ -97,6 +98,9 @@ const AdminDashboard = () => {
                 setClosedMessage(docSnap.data().closedMessage || '');
                 if (docSnap.data().promotionalBanner) {
                     setPromotionalBanner(docSnap.data().promotionalBanner);
+                }
+                if (docSnap.data().freeDeliveryLimit) {
+                    setFreeDeliveryLimit(docSnap.data().freeDeliveryLimit);
                 }
                 setIsMaintenanceMode(docSnap.data().isMaintenanceMode || false);
                 setMaintenanceEndTime(docSnap.data().maintenanceEndTime || '');
@@ -335,7 +339,8 @@ const AdminDashboard = () => {
             await setDoc(doc(db, "settings", "store"), {
                 isOpen: isStoreOpen,
                 closedMessage: closedMessage,
-                promotionalBanner: promotionalBanner
+                promotionalBanner: promotionalBanner,
+                freeDeliveryLimit: parseInt(freeDeliveryLimit) || 499
             }, { merge: true });
             alert("Settings saved!");
         } catch (error) {
@@ -551,6 +556,19 @@ const AdminDashboard = () => {
                                             <p className="text-xs text-gray-500 mt-1">This message will be displayed as a red banner on the public website.</p>
                                         </div>
                                     )}
+
+                                    <div className="mt-4 border-t pt-4">
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Free Delivery Threshold (₹)</label>
+                                        <input
+                                            type="number"
+                                            value={freeDeliveryLimit}
+                                            onChange={(e) => setFreeDeliveryLimit(e.target.value)}
+                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
+                                            placeholder="e.g. 499"
+                                            min="0"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Orders above this amount get free delivery. This updates the cart in real-time.</p>
+                                    </div>
 
                                     <div className="mt-4 border-t pt-4">
                                         <label className="block text-gray-700 text-sm font-bold mb-2">Promotional Banner Message</label>

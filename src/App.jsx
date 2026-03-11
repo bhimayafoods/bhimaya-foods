@@ -102,7 +102,7 @@ function App() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const DELIVERY_CHARGE = 50;
-  const FREE_LIMIT = 599;
+  const FREE_LIMIT = storeSettings?.freeDeliveryLimit || 499;
 
   const delivery = total >= FREE_LIMIT ? 0 : DELIVERY_CHARGE;
   const finalTotal = total + delivery;
@@ -338,6 +338,7 @@ function App() {
         total={total}
         delivery={delivery}
         finalTotal={finalTotal}
+        freeDeliveryLimit={FREE_LIMIT}
         isOpen={isCartOpen}
         closeCart={() => setIsCartOpen(false)}
         increaseQuantity={increaseQuantity}

@@ -7,10 +7,11 @@ function Cart({
   increaseQuantity,
   decreaseQuantity,
   checkout,
+  freeDeliveryLimit,
 }) {
 
   const DELIVERY_CHARGE = 50;
-  const FREE_LIMIT = 599;
+  const FREE_LIMIT = freeDeliveryLimit || 499;
 
   const isItemOutOfStock = (item) => {
     const liveProduct = products?.find(p => p.id === item.id);

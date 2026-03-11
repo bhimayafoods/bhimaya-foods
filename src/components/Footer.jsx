@@ -5,7 +5,7 @@ function Footer() {
         <div>
           <h3 className="text-2xl font-bold mb-4">BHIMAYA FOODS</h3>
           <p>Spreading joy through flavors.</p><br/>
-          <p>FSSAI No : 20126121000164</p>
+          <p>Tippanagunta Krishna(dist) Andhra Pradesh</p>
         </div>
 
         <div>
@@ -23,6 +23,7 @@ function Footer() {
           <p>
             WhatsApp: <a href="https://wa.me/919493023030" className="hover:text-secondary transition">+91 9493023030</a>
           </p>
+          <p>FSSAI No : 20126121000164</p>
         </div>
       </div>
 

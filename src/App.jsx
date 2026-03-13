@@ -49,7 +49,7 @@ function App() {
 
   const WHATSAPP_NUMBER = "919493023030";
 
-  const addToCart = (product) => {
+  const addToCart = (product, weight = "1000gm", price) => {
     const isOutOfStock =
       product.quantity?.toLowerCase().includes('out of stock') ||
       product.description?.toLowerCase().includes('out of stock') ||
@@ -57,43 +57,48 @@ function App() {
 
     if (isOutOfStock) return alert("Sorry, this item is out of stock.");
 
-    const existing = cart.find((item) => item.id === product.id);
+    const itemPrice = price || product.price;
+    const cartItemId = `${product.id}_${weight}`;
+    const existing = cart.find((item) => String(item.cartItemId) === String(cartItemId));
 
     if (existing) {
       setCart(cart.map(item =>
-        item.id === product.id
+        String(item.cartItemId) === String(cartItemId)
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([...cart, { ...product, cartItemId, weight, price: itemPrice, quantity: 1 }]);
     }
 
     // setIsCartOpen(true); // User requested to disable auto-open
   };
 
-  const increaseQuantity = (id) => {
-    const product = products.find(p => p.id === id);
+  const increaseQuantity = (cartItemId) => {
+    const cartItemIdStr = String(cartItemId);
+    const productId = cartItemIdStr.split('_')[0];
+    const product = products.find(p => String(p.id) === productId);
     const isOutOfStock =
       product?.quantity?.toLowerCase().includes('out of stock') ||
       product?.description?.toLowerCase().includes('out of stock') ||
       product?.quantity === '0';
     if (isOutOfStock) return alert("Sorry, this item is currently out of stock and cannot be increased.");
     setCart(cart.map(item =>
-      item.id === id
+      String(item.cartItemId) === cartItemIdStr
         ? { ...item, quantity: item.quantity + 1 }
         : item
     ));
   };
 
-  const decreaseQuantity = (id) => {
-    const item = cart.find(i => i.id === id);
+  const decreaseQuantity = (cartItemId) => {
+    const cartItemIdStr = String(cartItemId);
+    const item = cart.find(i => String(i.cartItemId) === cartItemIdStr);
 
     if (item.quantity === 1) {
-      setCart(cart.filter(i => i.id !== id));
+      setCart(cart.filter(i => String(i.cartItemId) !== cartItemIdStr));
     } else {
       setCart(cart.map(i =>
-        i.id === id
+        String(i.cartItemId) === cartItemIdStr
           ? { ...i, quantity: i.quantity - 1 }
           : i
       ));
@@ -156,7 +161,8 @@ function App() {
     messageText += `*Phone:* ${phoneSnapshot}\n`;
     messageText += `*Address:* ${addressSnapshot}\n\n`;
     cartSnapshot.forEach(item => {
-      messageText += `• ${item.name} (x${item.quantity}) - ₹${item.price * item.quantity}\n`;
+      const weightLabel = item.weight ? ` (${item.weight})` : "";
+      messageText += `• ${item.name}${weightLabel} (x${item.quantity}) - ₹${item.price * item.quantity}\n`;
     });
     if (delivery > 0) {
       messageText += `\n*Subtotal: ₹${total}*`;

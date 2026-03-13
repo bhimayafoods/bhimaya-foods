@@ -75,7 +75,7 @@ function Cart({
                   />
 
                   <div className="flex-1">
-                    <h4 className="font-semibold">{item.name}</h4>
+                    <h4 className="font-semibold">{item.name} ({item.weight})</h4>
                     {outOfStock ? (
                       <p className="text-xs text-red-500 font-bold">⚠️ Out of Stock — Please remove</p>
                     ) : (
@@ -87,7 +87,7 @@ function Cart({
 
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => decreaseQuantity(item.id)}
+                      onClick={() => decreaseQuantity(item.cartItemId)}
                       className="w-7 h-7 border border-primary rounded-full"
                     >
                       -
@@ -96,7 +96,7 @@ function Cart({
                     <span>{item.quantity}</span>
 
                     <button
-                      onClick={() => !outOfStock && increaseQuantity(item.id)}
+                      onClick={() => !outOfStock && increaseQuantity(item.cartItemId)}
                       disabled={outOfStock}
                       className={`w-7 h-7 border rounded-full transition ${outOfStock ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 'border-primary'}`}
                     >

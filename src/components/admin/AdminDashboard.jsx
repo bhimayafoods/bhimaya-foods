@@ -14,7 +14,6 @@ const AdminDashboard = () => {
     const [imageName, setImageName] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
-    const [quantity, setQuantity] = useState('');
     const [editingId, setEditingId] = useState(null);
 
     // Store Settings State
@@ -396,7 +395,6 @@ const AdminDashboard = () => {
         setImageName('');
         setDescription('');
         setCategory('');
-        setQuantity('');
         setEditingId(null);
     };
 
@@ -407,7 +405,6 @@ const AdminDashboard = () => {
         setImageName(product.image ? 'Existing Image' : '');
         setDescription(product.description || '');
         setCategory(product.category || '');
-        setQuantity(product.quantity || '');
         setEditingId(product.id);
     };
 
@@ -426,7 +423,7 @@ const AdminDashboard = () => {
             image,
             description,
             category,
-            quantity
+            quantity: "1kg" // Standardized to 1kg
         };
 
         try {
@@ -645,9 +642,10 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-gray-700 text-sm font-bold mb-2">Price (₹)</label>
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Price (₹ per 1kg)</label>
                                         <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required
-                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. 250" />
+                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. 520" />
+                                        <p className="text-[10px] text-gray-500 mt-1 italic">Note: Enter the price for 1kg. Prices for 250gm and 500gm will be calculated automatically.</p>
                                     </div>
 
                                     <div>
@@ -683,11 +681,6 @@ const AdminDashboard = () => {
                                         </select>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-gray-700 text-sm font-bold mb-2">Quantity/Weight</label>
-                                        <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. 1kg or 250g" />
-                                    </div>
 
                                     <div>
                                         <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
@@ -729,8 +722,7 @@ const AdminDashboard = () => {
                                                 <tr className="bg-gray-100 border-b">
                                                     <th className="p-3">Image</th>
                                                     <th className="p-3">Name</th>
-                                                    <th className="p-3">Price</th>
-                                                    <th className="p-3">Qty</th>
+                                                    <th className="p-3">Price (1kg)</th>
                                                     <th className="p-3">Category</th>
                                                     <th className="p-3 text-right">Actions</th>
                                                 </tr>
@@ -744,16 +736,12 @@ const AdminDashboard = () => {
                                                     products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.category.toLowerCase().includes(productSearch.toLowerCase())).map(product => {
                                                         const isLowStock = product.quantity?.toLowerCase().includes('out of stock') || product.quantity === '0' || product.quantity?.toLowerCase().includes('low');
                                                         return (
-                                                            <tr key={product.id} className={`border-b hover:bg-gray-50 ${isLowStock ? 'bg-red-50' : ''}`}>
+                                                            <tr key={product.id} className={`border-b hover:bg-gray-50`}>
                                                                 <td className="p-3">
                                                                     <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
                                                                 </td>
                                                                 <td className="p-3 font-medium">{product.name}</td>
                                                                 <td className="p-3">₹{product.price}</td>
-                                                                <td className="p-3">
-                                                                    {product.quantity}
-                                                                    {isLowStock && <span className="block text-xs text-red-600 font-bold whitespace-nowrap">Low/Out of Stock</span>}
-                                                                </td>
                                                                 <td className="p-3 text-sm text-gray-600">{product.category}</td>
                                                                 <td className="p-3 text-right space-x-2 whitespace-nowrap">
                                                                     <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700">Edit</button>

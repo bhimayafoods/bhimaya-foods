@@ -7,10 +7,6 @@ function Products({
   increaseQuantity,
   decreaseQuantity,
 }) {
-  const getQuantity = (id) => {
-    const item = cart.find((item) => item.id === id);
-    return item ? item.quantity : 0;
-  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -92,88 +88,125 @@ function Products({
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
-          {filteredProducts.map((product) => {
-            const qty = getQuantity(product.id);
-            const isOutOfStock =
-              product.quantity?.toLowerCase().includes('out of stock') ||
-              product.description?.toLowerCase().includes('out of stock') ||
-              product.quantity === '0';
-
-            return (
-              <div
-                key={product.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition overflow-hidden"
-              >
-                <div className="relative h-64">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover hover:scale-110 transition duration-500"
-                  />
-                  <span className="absolute top-4 right-4 bg-secondary text-white px-3 py-1 rounded-full text-sm">
-                    {product.category}
-                  </span>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-primary mb-2">
-                    {product.name}
-                    {product.quantity && (
-                      <span className="text-sm text-gray-500 ml-2">
-                        ({product.quantity})
-                      </span>
-                    )}
-                  </h3>
-
-                  <div className="min-h-[2.5rem] mt-1 mb-2">
-                    {product.description && (
-                      <p className={`text-sm ${product.description.toLowerCase().includes('out of stock') ? 'text-red-500 font-bold' : 'text-gray-600'}`}>
-                        {product.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center mt-4">
-                    <span className="text-2xl font-bold text-primary">
-                      ₹{product.price}
-                    </span>
-
-                    {qty > 0 ? (
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => decreaseQuantity(product.id)}
-                          className="w-8 h-8 border border-primary rounded-full transition hover:bg-orange-50"
-                        >
-                          -
-                        </button>
-                        <span className="font-semibold w-4 text-center">{qty}</span>
-                        <button
-                          onClick={() => increaseQuantity(product.id)}
-                          className="w-8 h-8 border border-primary rounded-full transition hover:bg-orange-50"
-                        >
-                          +
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => !isOutOfStock && addToCart(product)}
-                        disabled={isOutOfStock}
-                        className={`px-6 py-2 rounded-full font-bold transition-all duration-300 ${isOutOfStock
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-400"
-                          : "bg-primary text-white hover:bg-orange-700 shadow-md hover:shadow-lg active:scale-95"
-                          }`}
-                      >
-                        {isOutOfStock ? "Out of Stock" : "Add"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              cart={cart}
+              addToCart={addToCart}
+              increaseQuantity={increaseQuantity}
+              decreaseQuantity={decreaseQuantity}
+            />
+          ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function ProductCard({
+  product,
+  cart,
+  addToCart,
+  increaseQuantity,
+  decreaseQuantity,
+}) {
+  const [selectedWeight, setSelectedWeight] = useState("250gm");
+
+  const weights = [
+    { label: "250gm", factor: 0.25 },
+    { label: "500gm", factor: 0.5 },
+    { label: "1000gm", factor: 1 },
+  ];
+
+  const basePrice = parseFloat(product.price) || 0;
+  const currentPrice = Math.round(basePrice * (weights.find(w => w.label === selectedWeight)?.factor || 1));
+  const cartItemId = `${product.id}_${selectedWeight}`;
+  
+  const qty = cart.find((item) => item.cartItemId === cartItemId)?.quantity || 0;
+  const isOutOfStock =
+    product.quantity?.toLowerCase().includes('out of stock') ||
+    product.description?.toLowerCase().includes('out of stock') ||
+    product.quantity === '0';
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition overflow-hidden flex flex-col h-full">
+      <div className="relative h-64 overflow-hidden">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover hover:scale-110 transition duration-500"
+        />
+        <span className="absolute top-4 right-4 bg-secondary text-white px-3 py-1 rounded-full text-sm">
+          {product.category}
+        </span>
+      </div>
+
+      <div className="p-6 flex flex-col flex-1">
+        <h3 className="text-xl font-semibold text-primary mb-2">
+          {product.name}
+        </h3>
+
+        <div className="min-h-[2.5rem] mt-1 mb-4">
+          {product.description && (
+            <p className={`text-sm ${product.description.toLowerCase().includes('out of stock') ? 'text-red-500 font-bold' : 'text-gray-600'}`}>
+              {product.description}
+            </p>
+          )}
+        </div>
+
+        {/* Weight Selection */}
+        <div className="flex gap-2 mb-6">
+          {weights.map((w) => (
+            <button
+              key={w.label}
+              onClick={() => setSelectedWeight(w.label)}
+              className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-all ${selectedWeight === w.label
+                ? "bg-primary text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-primary"
+                }`}
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex justify-between items-center mt-auto">
+          <span className="text-2xl font-bold text-primary">
+            ₹{currentPrice}
+          </span>
+
+          {qty > 0 ? (
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => decreaseQuantity(cartItemId)}
+                className="w-8 h-8 flex items-center justify-center border border-primary rounded-full transition hover:bg-orange-50 text-primary font-bold"
+              >
+                -
+              </button>
+              <span className="font-semibold w-4 text-center">{qty}</span>
+              <button
+                onClick={() => increaseQuantity(cartItemId)}
+                className="w-8 h-8 flex items-center justify-center border border-primary rounded-full transition hover:bg-orange-50 text-primary font-bold"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => !isOutOfStock && addToCart(product, selectedWeight, currentPrice)}
+              disabled={isOutOfStock}
+              className={`px-6 py-2 rounded-full font-bold transition-all duration-300 ${isOutOfStock
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-400"
+                : "bg-primary text-white hover:bg-orange-700 shadow-md hover:shadow-lg active:scale-95"
+                }`}
+            >
+              {isOutOfStock ? "Out of Stock" : "Add"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

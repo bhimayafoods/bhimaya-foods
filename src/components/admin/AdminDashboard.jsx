@@ -202,8 +202,8 @@ const AdminDashboard = () => {
         setLocationsLoading(true);
         setLocationsError('');
         try {
-            // Remove cache-buster as it may cause 404 on some APIs
-            let response = await fetch('/api/shiprocket/settings/get/pickup', {
+            // Updated to the correct endpoint path
+            let response = await fetch('/api/shiprocket/settings/company/pickup', {
                 method: 'GET',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -215,8 +215,8 @@ const AdminDashboard = () => {
 
             // Fallback to 'locations' endpoint if 'pickup' returns 404
             if (response.status === 404) {
-                console.log("DEBUG - settings/get/pickup returned 404, trying settings/get/locations...");
-                response = await fetch('/api/shiprocket/settings/get/locations', {
+                console.log("DEBUG - settings/company/pickup returned 404, trying settings/get/pickup...");
+                response = await fetch('/api/shiprocket/settings/get/pickup', {
                     method: 'GET',
                     headers: { 
                         'Content-Type': 'application/json',

@@ -60,6 +60,7 @@ const AdminDashboard = () => {
     const [showSrPassword, setShowSrPassword] = useState(false);
     const [pickupLocations, setPickupLocations] = useState([]);
     const [selectedPickup, setSelectedPickup] = useState('');
+    const [isManualPickup, setIsManualPickup] = useState(false);
     const [locationsLoading, setLocationsLoading] = useState(false);
     const [locationsError, setLocationsError] = useState('');
 
@@ -201,14 +202,29 @@ const AdminDashboard = () => {
         setLocationsLoading(true);
         setLocationsError('');
         try {
-            const response = await fetch(`/api/shiprocket/settings/get/pickup?t=${Date.now()}`, {
+            // Remove cache-buster as it may cause 404 on some APIs
+            let response = await fetch('/api/shiprocket/settings/get/pickup', {
                 method: 'GET',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
             });
+
             console.log("DEBUG - Pickup Location Response Status:", response.status);
+
+            // Fallback to 'locations' endpoint if 'pickup' returns 404
+            if (response.status === 404) {
+                console.log("DEBUG - settings/get/pickup returned 404, trying settings/get/locations...");
+                response = await fetch('/api/shiprocket/settings/get/locations', {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            }
+
             const result = await response.json();
             if (response.ok && result.data?.shipping_address) {
                 const locations = result.data.shipping_address;
@@ -216,8 +232,17 @@ const AdminDashboard = () => {
                 if (locations.length > 0) {
                     setSelectedPickup(locations[0].pickup_location);
                 }
+            } else if (response.ok && result.data) {
+                // Handle different response structures
+                const data = result.data.shipping_address || result.data || [];
+                if (Array.isArray(data)) {
+                    setPickupLocations(data);
+                    if (data.length > 0) setSelectedPickup(data[0].pickup_location || data[0]);
+                } else {
+                    setLocationsError("Unexpected data format from Shiprocket");
+                }
             } else {
-                setLocationsError(result.message || "Failed to load locations");
+                setLocationsError(result.message || "Failed to load locations (Shiprocket Error)");
             }
         } catch (error) {
             console.error("Error fetching pickup locations:", error);
@@ -1250,10 +1275,26 @@ const AdminDashboard = () => {
                                     <div className="mt-4 p-3 bg-white/50 rounded-lg border border-purple-100">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-xs font-bold text-purple-700">Pickup Location Selection</span>
-                                            {locationsLoading && <span className="text-[10px] text-purple-400 italic">Syncing warehouses...</span>}
+                                            <button 
+                                                onClick={() => setIsManualPickup(!isManualPickup)}
+                                                className="text-[10px] text-blue-600 hover:underline"
+                                            >
+                                                {isManualPickup ? "Use Dropdown" : "Type Manually?"}
+                                            </button>
                                         </div>
 
-                                        {pickupLocations.length > 0 ? (
+                                        {isManualPickup ? (
+                                            <div className="flex flex-col gap-2">
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Enter Warehouse Name (e.g. Primary)"
+                                                    value={selectedPickup}
+                                                    onChange={(e) => setSelectedPickup(e.target.value)}
+                                                    className="text-xs p-1.5 border border-purple-200 rounded bg-white outline-none focus:ring-1 focus:ring-purple-500 w-full"
+                                                />
+                                                <p className="text-[10px] text-purple-400">Type the exact "Pickup Location" name from your Shiprocket Settings.</p>
+                                            </div>
+                                        ) : pickupLocations.length > 0 ? (
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <select 
                                                     value={selectedPickup} 
@@ -1270,21 +1311,32 @@ const AdminDashboard = () => {
                                                     onClick={() => fetchPickupLocations()}
                                                     className="p-1 px-2 border border-purple-200 rounded text-[10px] text-purple-600 hover:bg-purple-100 transition"
                                                 >
-                                                    ↻ Refresh
+                                                    {locationsLoading ? "..." : "↻ Refresh"}
                                                 </button>
                                                 <p className="text-[10px] text-purple-400 w-full">Order will be picked up from this address.</p>
                                             </div>
                                         ) : !locationsLoading ? (
                                             <div className="flex flex-col gap-2">
                                                 <p className="text-[10px] text-red-500">
-                                                    {locationsError || "No Pickup Locations found for your account."}
+                                                    {locationsError || "No Pickup Locations found (or 404 Error)."}
                                                 </p>
-                                                <button 
-                                                    onClick={() => fetchPickupLocations()}
-                                                    className="w-fit bg-purple-100 text-purple-700 px-3 py-1.5 rounded-md font-bold text-[10px] hover:bg-purple-200"
-                                                >
-                                                    Click to Load Pickup Locations
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        onClick={() => fetchPickupLocations()}
+                                                        className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-md font-bold text-[10px] hover:bg-purple-200"
+                                                    >
+                                                        Retry Fetch
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setIsManualPickup(true);
+                                                            setSelectedPickup("Primary");
+                                                        }}
+                                                        className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md font-bold text-[10px] hover:bg-blue-100"
+                                                    >
+                                                        Enter Manually
+                                                    </button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="h-10 flex items-center justify-center">

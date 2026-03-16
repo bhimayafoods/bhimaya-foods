@@ -1,4 +1,4 @@
-import heroImg from "../assets/sweet_snack_1.png";
+import heroImg from "../assets/home.jpeg";
 
 function Hero() {
   return (
@@ -7,7 +7,7 @@ function Hero() {
       className="h-screen flex items-center justify-center bg-cover bg-center text-white"
       style={{
         backgroundImage:
-          `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${heroImg})`,
+          `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url(${heroImg})`,
       }}
     >
       <div className="text-center max-w-3xl px-6">

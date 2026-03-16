@@ -49,6 +49,18 @@ const AdminDashboard = () => {
     // Pending Updates State (for Confirmation Flow)
     const [pendingUpdates, setPendingUpdates] = useState({}); // { orderId: { status, paymentStatus } }
 
+    // Shiprocket State
+    const [shiprocketToken, setShiprocketToken] = useState('');
+    const [shiprocketEmail, setShiprocketEmail] = useState('');
+    const [shiprocketPassword, setShiprocketPassword] = useState('');
+    const [isSyncing, setIsSyncing] = useState({}); // { orderId: true/false }
+    const [tokenLoading, setTokenLoading] = useState(false);
+    const [useManualToken, setUseManualToken] = useState(false);
+    const [manualTokenInput, setManualTokenInput] = useState('');
+    const [showSrPassword, setShowSrPassword] = useState(false);
+    const [pickupLocations, setPickupLocations] = useState([]);
+    const [selectedPickup, setSelectedPickup] = useState('');
+
     // Ref to hold the onSnapshot unsubscribe function (prevents duplicate listeners)
     const ordersUnsubRef = useRef(null);
     const customersUnsubRef = useRef(null);
@@ -56,6 +68,8 @@ const AdminDashboard = () => {
 
     // Visual-only refreshing state for the ↻ button spin animation
     const [isRefreshing, setIsRefreshing] = useState({});
+    const [shakeTokenInput, setShakeTokenInput] = useState(false);
+    const shiprocketTokenRef = useRef(null);
 
     const triggerRefresh = (key, fetchFn) => {
         setIsRefreshing(prev => ({ ...prev, [key]: true }));
@@ -180,6 +194,149 @@ const AdminDashboard = () => {
         }));
     };
 
+    const handleShiprocketLogin = async (e) => {
+        if (e) e.preventDefault();
+        const email = shiprocketEmail.trim();
+        const password = shiprocketPassword.trim();
+        
+        if (!email || !password) return alert("Please enter your Shiprocket API Email and Password.");
+
+        setTokenLoading(true);
+        try {
+            const response = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password })
+            });
+            const data = await response.json();
+            if (response.ok && data.token) {
+                setShiprocketToken(data.token);
+                
+                // Also fetch pickup locations automatically
+                try {
+                    const locationsRes = await fetch('https://apiv2.shiprocket.in/v1/external/settings/get/pickup', {
+                        method: 'GET',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${data.token}`
+                        }
+                    });
+                    const locationsData = await locationsRes.json();
+                    if (locationsData.data && locationsData.data.shipping_address) {
+                        const locations = locationsData.data.shipping_address;
+                        setPickupLocations(locations);
+                        if (locations.length > 0) {
+                            setSelectedPickup(locations[0].pickup_location);
+                        }
+                    }
+                } catch (locError) {
+                    console.error("Error fetching locations:", locError);
+                }
+
+                alert("✅ Successfully logged in to Shiprocket!");
+            } else {
+                // More detailed error for the user
+                const errorDetail = data.message || "Invalid email or password.";
+                alert(`❌ Login Failed: ${errorDetail}\n\nTip: Make sure you are using the password for the API USER (check your email), not your main account password.`);
+            }
+        } catch (error) {
+            console.error("Login error:", error);
+            alert("❌ Connection error. Please ensure you have an active internet connection.");
+        } finally {
+            setTokenLoading(false);
+        }
+    };
+
+    const handleSyncToShiprocket = async (order) => {
+        if (!shiprocketToken) {
+            setShakeTokenInput(true);
+            setTimeout(() => setShakeTokenInput(false), 500);
+            shiprocketTokenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            shiprocketTokenRef.current?.focus();
+            return alert("⚠️ Please enter your Shiprocket API Token in the purple box above first!");
+        }
+
+        // Hard validation for Shiprocket requirements
+        if (!order.customerCity || !order.customerState || !order.customerPincode) {
+            return alert("❌ Missing Data: This order is missing City, State, or Pincode. Shiprocket requires these separate fields. Please update the order manually if possible, or use the CSV Export.");
+        }
+
+        setIsSyncing(prev => ({ ...prev, [order.id]: true }));
+
+        try {
+            const payload = {
+                order_id: order.orderID || order.id,
+                order_date: new Date(order.createdAt?.seconds * 1000).toISOString().replace('T', ' ').split('.')[0],
+                pickup_location: selectedPickup || "Primary",
+                billing_customer_name: order.customerName,
+                billing_last_name: "",
+                billing_address: order.customerAddress,
+                billing_city: order.customerCity,
+                billing_pincode: order.customerPincode,
+                billing_state: order.customerState,
+                billing_country: "India",
+                billing_email: order.customerEmail || "customer@bhimayafoods.com",
+                billing_phone: order.customerPhone,
+                shipping_is_billing: true,
+                order_items: order.items.map(item => ({
+                    name: item.name,
+                    sku: item.id || item.name,
+                    units: parseInt(item.quantity) || 1,
+                    selling_price: parseFloat(item.price),
+                    discount: 0,
+                    tax: 0,
+                    hsn: ""
+                })),
+                payment_method: (order.paymentStatus === 'Successful' || order.paymentMethod === 'Online') ? 'Prepaid' : 'COD',
+                sub_total: parseFloat(order.totalAmount),
+                length: 10,
+                breadth: 10,
+                height: 10,
+                weight: 0.5
+            };
+
+            const response = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${shiprocketToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                const srOrderId = result.order_id || result.data?.order_id;
+                const srShipmentId = result.shipment_id || result.data?.shipment_id;
+
+                alert(`✅ Success! Order synced to Shiprocket.\n${srOrderId ? `Shiprocket Order ID: ${srOrderId}` : ''}`);
+                
+                // Save Shiprocket IDs to the order document
+                await updateDoc(doc(db, "orders", order.id), { 
+                    status: 'Processing',
+                    shiprocketOrderId: srOrderId || null,
+                    shiprocketShipmentId: srShipmentId || null
+                });
+            } else {
+                console.error("Shiprocket API Error:", result);
+                let errorMsg = result.message || "Invalid Data";
+                if (result.errors) {
+                    const detailedErrors = Object.entries(result.errors)
+                        .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+                        .join('\n');
+                    errorMsg += `\n\nDetails:\n${detailedErrors}`;
+                }
+                alert(`❌ Sync Failed: ${errorMsg}`);
+            }
+        } catch (error) {
+            console.error("Sync Error:", error);
+            alert("❌ Sync Error: Unexpected connection issue. Please check your internet or try again later.");
+        } finally {
+            setIsSyncing(prev => ({ ...prev, [order.id]: false }));
+        }
+    };
+
     const handleConfirmUpdate = async (order) => {
         const update = pendingUpdates[order.id];
         if (!update) return;
@@ -200,6 +357,9 @@ const AdminDashboard = () => {
             if (update.utrNumber !== undefined && update.utrNumber.trim() !== (order.utrNumber || '')) {
                 finalUpdate.utrNumber = update.utrNumber.trim();
             }
+            if (update.awbNumber !== undefined && update.awbNumber.trim() !== (order.awbNumber || '')) {
+                finalUpdate.awbNumber = update.awbNumber.trim();
+            }
 
             if (Object.keys(finalUpdate).length === 0) return;
 
@@ -210,12 +370,17 @@ const AdminDashboard = () => {
             const newPayment = finalUpdate.paymentStatus || order.paymentStatus;
 
             let messageText = "";
+            const awb = finalUpdate.awbNumber || order.awbNumber;
+            const trackingLink = awb ? `\nTracking Link: https://www.shiprocket.in/shipment-tracking/${awb}` : "";
+
             if (newStatus === "Rejected") {
                 const reason = update.rejectionReason?.trim();
                 const reasonText = reason ? `\nReason: ${reason}` : "";
                 messageText = `Hello *${order.customerName}*!\nYour order *#${order.orderID || order.id.substring(0, 8)}* has been *Rejected*. ${reasonText}\nPlease contact support for more details.`;
+            } else if (newStatus === "Shipped") {
+                messageText = `Hello *${order.customerName}*!\nYour order *#${order.orderID || order.id.substring(0, 8)}* has been *SHIPPED*! 🚚\n${awb ? `AWB Number: *${awb}*${trackingLink}` : "We will share the tracking details shortly."}\nThank you for shopping with Bhimaya Foods!`;
             } else {
-                messageText = `Hello *${order.customerName}*!\nYour order *#${order.orderID || order.id.substring(0, 8)}* has been updated:\nDelivery: *${newStatus}*\nPayment: *${newPayment}*\nThank you for shopping with Bhimaya Foods!`;
+                messageText = `Hello *${order.customerName}*!\nYour order *#${order.orderID || order.id.substring(0, 8)}* has been updated:\nDelivery: *${newStatus}*\nPayment: *${newPayment}*${trackingLink}\nThank you for shopping with Bhimaya Foods!`;
             }
 
             const encodedMessage = encodeURIComponent(messageText);
@@ -263,6 +428,62 @@ const AdminDashboard = () => {
         const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute("download", `Bhimaya_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const exportToShiprocketCSV = () => {
+        const headers = [
+            "Order ID", "Order Date", "Channel", "Pickup Location", "Customer Name", "Customer Email", "Customer Phone",
+            "Shipping Address", "Shipping Address 2", "Shipping City", "Shipping Pincode", "Shipping State", "Shipping Country",
+            "Payment Method", "Total Discount", "Total Amount", "Order SKU", "Product Name", "Product Quantity", "Product Price",
+            "Product Tax", "Product HSN", "Product Category", "Order Weight", "Order Length", "Order Width", "Order Height"
+        ];
+
+        const rows = [];
+        ordersList.filter(o => o.status === 'Processing' || o.status === 'Packed' || o.status === 'Pending').forEach(order => {
+            order.items?.forEach((item, idx) => {
+                rows.push([
+                    order.orderID || order.id,
+                    order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : '',
+                    "Bhimaya Foods",
+                    "Primary", // Default pickup location
+                    order.customerName || 'Customer',
+                    '', // Email
+                    order.customerPhone || '',
+                    order.customerAddress || '',
+                    '', // Addr 2
+                    order.customerCity || '', // City
+                    order.customerPincode || '', // Pincode
+                    order.customerState || '', // State
+                    'India',
+                    (order.paymentStatus === 'Successful') ? 'Prepaid' : 'COD',
+                    0,
+                    order.totalAmount,
+                    item.id,
+                    item.name,
+                    item.quantity,
+                    item.price,
+                    0,
+                    '',
+                    '',
+                    item.weight ? (item.weight.includes('250') ? '0.25' : item.weight.includes('500') ? '0.5' : '1.0') : '0.5',
+                    '10', '10', '10' // Default dimensions
+                ]);
+            });
+        });
+
+        const csvContent = headers.join(",") + "\n"
+            + rows.map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Shiprocket_Bulk_Import_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -819,11 +1040,182 @@ const AdminDashboard = () => {
                                         onChange={(e) => setOrderSearch(e.target.value)}
                                         className="p-2 border rounded text-sm flex-1 md:w-64 focus:ring-2 focus:ring-orange-500 outline-none"
                                     />
-                                    <button onClick={exportOrdersToCSV} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition whitespace-nowrap font-bold">
-                                        Export CSV
+                                    <button onClick={exportOrdersToCSV} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 transition whitespace-nowrap font-bold">
+                                        Export All
+                                    </button>
+                                    <button onClick={exportToShiprocketCSV} className="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700 transition whitespace-nowrap font-bold flex items-center gap-2">
+                                        <span>Shiprocket CSV</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Shiprocket Token Section */}
+                            <div className="bg-purple-50 p-5 rounded-xl mb-6 border border-purple-100 shadow-sm">
+                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-purple-600 p-3 rounded-xl text-white shadow-lg">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-purple-900 text-lg leading-tight">Shiprocket One-Click Sync</h3>
+                                            <p className="text-xs text-purple-700 mt-1">Login with your Shiprocket API details to sync orders instantly. Credentials are NOT saved.</p>
+                                        </div>
+                                    </div>
+
+                                    {!shiprocketToken ? (
+                                        <div className="flex flex-col gap-3 w-full lg:w-auto">
+                                            {/* Toggle */}
+                                            <div className="flex bg-purple-100 p-1 rounded-lg w-fit">
+                                                <button 
+                                                    onClick={() => setUseManualToken(false)}
+                                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${!useManualToken ? 'bg-white text-purple-600 shadow-sm' : 'text-purple-400'}`}
+                                                >
+                                                    Login Mode
+                                                </button>
+                                                <button 
+                                                    onClick={() => setUseManualToken(true)}
+                                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${useManualToken ? 'bg-white text-purple-600 shadow-sm' : 'text-purple-400'}`}
+                                                >
+                                                    Manual Token
+                                                </button>
+                                            </div>
+
+                                            {useManualToken ? (
+                                                <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto relative">
+                                                    <input
+                                                        type={showSrPassword ? "text" : "password"}
+                                                        placeholder="Paste Shiprocket API Token here..."
+                                                        value={manualTokenInput}
+                                                        onChange={(e) => setManualTokenInput(e.target.value)}
+                                                        className="flex-1 p-2.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white pr-20 lg:w-96"
+                                                    />
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (manualTokenInput.length < 50) {
+                                                                alert("Please paste a valid Shiprocket Token (usually very long).");
+                                                                return;
+                                                            }
+                                                            setShiprocketToken(manualTokenInput);
+                                                        }}
+                                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-700 whitespace-nowrap"
+                                                    >
+                                                        Save Token
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setShowSrPassword(!showSrPassword)}
+                                                        className="absolute right-[110px] top-1/2 -translate-y-1/2 text-purple-300 hover:text-purple-600"
+                                                        type="button"
+                                                    >
+                                                        {showSrPassword ? (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                                                        ) : (
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                                                    <div className="flex-1 sm:w-48">
+                                                        <input
+                                                            type="email"
+                                                            placeholder="API Email"
+                                                            value={shiprocketEmail}
+                                                            onChange={(e) => setShiprocketEmail(e.target.value)}
+                                                            className="w-full p-2.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 sm:w-48 relative">
+                                                        <input
+                                                            type={showSrPassword ? "text" : "password"}
+                                                            placeholder="API Password"
+                                                            value={shiprocketPassword}
+                                                            onChange={(e) => setShiprocketPassword(e.target.value)}
+                                                            className="w-full p-2.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white pr-10"
+                                                        />
+                                                        <button 
+                                                            onClick={() => setShowSrPassword(!showSrPassword)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-300 hover:text-purple-600"
+                                                            type="button"
+                                                        >
+                                                            {showSrPassword ? (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                                                            ) : (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={handleShiprocketLogin}
+                                                        disabled={tokenLoading}
+                                                        className="bg-purple-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-purple-700 transition-all flex items-center justify-center gap-2 shadow-md active:scale-95 disabled:bg-purple-300"
+                                                    >
+                                                        {tokenLoading ? 'Connecting...' : 'Login to Shiprocket'}
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Troubleshooting Section */}
+                                            <div className="mt-3 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                                <h4 className="text-xs font-bold text-purple-900 mb-2 flex items-center gap-2">
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                    Where to find your "Token" or "Password"?
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    <p className="text-[10px] text-purple-700 leading-relaxed">
+                                                        Shiprocket does <b>not</b> show the Token in a box. Instead, the "Token" is created automatically when you log in here. If login fails:
+                                                    </p>
+                                                    <ul className="text-[10px] text-purple-600 list-disc ml-4 space-y-1">
+                                                        <li>Check your <b>Main Email Inbox</b> for an email from Shiprocket with the subject <b>"Shiprocket API Credentials"</b>. The password is inside that email.</li>
+                                                        <li>In Shiprocket, click the <b>(...)</b> button next to <b>{shiprocketEmail || 'kalapalasyamala10@gmail.com'}</b> and select <b>Reset Password</b>. They will email you a fresh password.</li>
+                                                        <li><b>Note:</b> The API user's password is <u>different</u> from the one you use to login to the website.</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-3 bg-green-100 text-green-700 py-2 px-4 rounded-lg font-bold text-sm border border-green-200">
+                                            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                                            Shiprocket Active
+                                            <button onClick={() => setShiprocketToken('')} className="ml-2 text-xs text-blue-600 hover:underline">Switch account?</button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {shiprocketToken && pickupLocations.length > 0 && (
+                                    <div className="mt-4 flex items-center gap-3 bg-white/50 p-2 rounded-lg border border-purple-100 flex-wrap">
+                                        <span className="text-xs font-bold text-purple-700">Pickup Location:</span>
+                                        <select 
+                                            value={selectedPickup} 
+                                            onChange={(e) => setSelectedPickup(e.target.value)}
+                                            className="text-xs p-1.5 border border-purple-200 rounded bg-white outline-none focus:ring-1 focus:ring-purple-500"
+                                        >
+                                            {pickupLocations.map((loc, idx) => (
+                                                <option key={idx} value={loc.pickup_location}>
+                                                    {loc.pickup_location} ({loc.city})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-purple-400">Orders will be synced using this warehouse address.</p>
+                                    </div>
+                                )}
+
+                                <div className="mt-3 text-[10px] text-purple-400 flex items-center gap-2">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Don't have an API User? Go to <a href="https://app.shiprocket.in/api-user" target="_blank" rel="noopener noreferrer" className="underline font-bold">Settings &gt; API &gt; Configure</a> on Shiprocket Dashboard. 
+                                    <span className="ml-1 text-purple-600 italic">(Note: API Email must be DIFFERENT from your main login email)</span>
+                                </div>
+                            </div>
+
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                @keyframes shake {
+                                    0%, 100% { transform: translateX(0); }
+                                    25% { transform: translateX(-5px); }
+                                    75% { transform: translateX(5px); }
+                                }
+                                .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+                            `}} />
+
                             {ordersLoading ? (
                                 <p>Loading orders...</p>
                             ) : (
@@ -836,6 +1228,7 @@ const AdminDashboard = () => {
                                                 <th className="p-3">Total</th>
                                                 <th className="p-3">Delivery Status</th>
                                                 <th className="p-3">Payment Status</th>
+                                                <th className="p-3 text-center">Cloud Sync</th>
                                                 <th className="p-3 text-right">Update</th>
                                             </tr>
                                         </thead>
@@ -874,11 +1267,42 @@ const AdminDashboard = () => {
                                                             {order.customerAddress && (
                                                                 <div className="text-gray-500 text-xs border-l-2 border-orange-200 pl-2 max-w-[200px] italic whitespace-pre-wrap break-words">
                                                                     {order.customerAddress}
+                                                                    {(order.customerCity || order.customerPincode) && (
+                                                                        <div className="text-[10px] text-blue-400 mt-1 uppercase font-bold not-italic">
+                                                                            {order.customerCity}, {order.customerState} - {order.customerPincode}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                             {order.utrNumber && (
                                                                 <div className="text-xs mt-1 bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded inline-block">
                                                                     Transaction/UTR ID: {order.utrNumber}
+                                                                </div>
+                                                            )}
+                                                            {order.shiprocketOrderId && (
+                                                                <div className="text-xs mt-1 block">
+                                                                    <a 
+                                                                        href={`https://app.shiprocket.in/orders/details/${order.shiprocketOrderId}`} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1"
+                                                                    >
+                                                                        🚀 View on Shiprocket
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                            {order.awbNumber && (
+                                                                <div className="text-xs mt-1 block">
+                                                                    <a 
+                                                                        href={`https://www.shiprocket.in/shipment-tracking/${order.awbNumber}`} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1"
+                                                                    >
+                                                                        🚚 Tracking: {order.awbNumber}
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                    </a>
                                                                 </div>
                                                             )}
                                                             <ul className="mt-2 text-xs text-gray-600 border-t pt-2">
@@ -910,6 +1334,21 @@ const AdminDashboard = () => {
                                                                     💰 {order.paymentStatus || 'Pending'}
                                                                 </span>
                                                             </div>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <button 
+                                                                onClick={() => handleSyncToShiprocket(order)}
+                                                                disabled={isSyncing[order.id] || order.status === 'Shipped' || order.status === 'Delivered'}
+                                                                className={`px-3 py-2 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 mx-auto ${
+                                                                    (order.status === 'Shipped' || order.status === 'Delivered')
+                                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200 shadow-sm active:scale-95'
+                                                                }`}
+                                                            >
+                                                                {isSyncing[order.id] ? (
+                                                                    <span className="flex items-center gap-1"><svg className="animate-spin h-3 w-3 text-purple-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Syncing...</span>
+                                                                ) : (order.status === 'Shipped' || order.status === 'Delivered') ? 'Synced' : 'Sync to Shiprocket'}
+                                                            </button>
                                                         </td>
                                                         <td className="p-3 text-right">
                                                             <div className="flex flex-col gap-1 items-end">
@@ -956,6 +1395,18 @@ const AdminDashboard = () => {
                                                                             [order.id]: { ...prev[order.id], utrNumber: e.target.value }
                                                                         }))}
                                                                         className="mt-1 w-full p-1 border rounded text-xs outline-none bg-blue-50 border-blue-200 placeholder-blue-300"
+                                                                    />
+                                                                )}
+                                                                {(pendingUpdates[order.id]?.status === 'Shipped' || (order.status === 'Shipped' && !pendingUpdates[order.id]?.status)) && (
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Shiprocket AWB Number"
+                                                                        value={pendingUpdates[order.id]?.awbNumber !== undefined ? pendingUpdates[order.id].awbNumber : (order.awbNumber || '')}
+                                                                        onChange={(e) => setPendingUpdates(prev => ({
+                                                                            ...prev,
+                                                                            [order.id]: { ...prev[order.id], awbNumber: e.target.value }
+                                                                        }))}
+                                                                        className="mt-1 w-full p-1 border rounded text-xs outline-none bg-purple-50 border-purple-200 placeholder-purple-300"
                                                                     />
                                                                 )}
                                                                 {pendingUpdates[order.id] && (
@@ -1036,6 +1487,11 @@ const AdminDashboard = () => {
                                                         </td>
                                                         <td className="p-3 text-sm text-gray-600 max-w-[200px] whitespace-pre-wrap break-words">
                                                             {customer.address || 'N/A'}
+                                                            {(customer.city || customer.pincode) && (
+                                                                <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
+                                                                    {customer.city}, {customer.state} - {customer.pincode}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="p-3 text-center">
                                                             <span className="bg-orange-100 text-orange-800 font-bold px-2 py-1 rounded-full text-xs">

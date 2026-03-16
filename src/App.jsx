@@ -45,7 +45,12 @@ function App() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [customerCity, setCustomerCity] = useState("");
+  const [customerState, setCustomerState] = useState("");
+  const [customerPincode, setCustomerPincode] = useState("");
+  const [pincodeLoading, setPincodeLoading] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState("whatsapp"); // 'whatsapp' initialized
 
   const WHATSAPP_NUMBER = "919493023030";
 
@@ -135,6 +140,34 @@ function App() {
     setShowCheckoutForm(true);
   };
 
+  // Auto-fill City/State based on Pincode
+  useEffect(() => {
+    const lookupPincode = async () => {
+      if (customerPincode.length === 6) {
+        setPincodeLoading(true);
+        try {
+          const response = await fetch(`https://api.postalpincode.in/pincode/${customerPincode}`);
+          const data = await response.json();
+
+          if (data[0].Status === "Success") {
+            const info = data[0].PostOffice[0];
+            // Auto-fill City if not already typed or if it's different
+            if (!customerCity) setCustomerCity(info.Block || info.District);
+
+            // Map API state names to our dropdown names if necessary
+            const apiState = info.State;
+            setCustomerState(apiState);
+          }
+        } catch (error) {
+          console.error("Pincode lookup failed:", error);
+        } finally {
+          setPincodeLoading(false);
+        }
+      }
+    };
+    lookupPincode();
+  }, [customerPincode]);
+
   const generateOrderID = () => {
     const num = Math.floor(1000 + Math.random() * 9000);
     return `ORD-${num}`;
@@ -142,8 +175,8 @@ function App() {
 
   const processOrder = async (e) => {
     e.preventDefault();
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
-      return alert("Please enter your name, phone number, and address.");
+    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim() || !customerCity.trim() || !customerState.trim() || !customerPincode.trim()) {
+      return alert("Please fill in all details including City, State, and Pincode.");
     }
 
     // Snapshot cart and form values before any async/state operations
@@ -152,6 +185,9 @@ function App() {
     const phoneSnapshot = customerPhone.trim();
     // Prevent truncation by normalizing all types of linebreaks into commas
     const addressSnapshot = customerAddress.replace(/(\r\n|\n|\r)/gm, ", ").trim();
+    const citySnapshot = customerCity.trim();
+    const stateSnapshot = customerState.trim();
+    const pincodeSnapshot = customerPincode.trim();
     const orderID = generateOrderID();
 
     // Construct the WhatsApp message
@@ -159,7 +195,7 @@ function App() {
     messageText += `*Order from Bhimaya Foods*\n`;
     messageText += `*Customer:* ${nameSnapshot}\n`;
     messageText += `*Phone:* ${phoneSnapshot}\n`;
-    messageText += `*Address:* ${addressSnapshot}\n\n`;
+    messageText += `*Address:* ${addressSnapshot}, ${citySnapshot}, ${stateSnapshot} - ${pincodeSnapshot}\n\n`;
     cartSnapshot.forEach(item => {
       const weightLabel = item.weight ? ` (${item.weight})` : "";
       messageText += `• ${item.name}${weightLabel} (x${item.quantity}) - ₹${item.price * item.quantity}\n`;
@@ -186,6 +222,9 @@ function App() {
     setCustomerName("");
     setCustomerPhone("");
     setCustomerAddress("");
+    setCustomerCity("");
+    setCustomerState("");
+    setCustomerPincode("");
 
     // Save customer and order to Firestore in the background
     try {
@@ -197,6 +236,9 @@ function App() {
         await updateDoc(customerDocRef, {
           name: nameSnapshot,
           address: addressSnapshot,
+          city: citySnapshot,
+          state: stateSnapshot,
+          pincode: pincodeSnapshot,
           totalOrders: (data.totalOrders || 0) + 1,
           lastOrderDate: serverTimestamp()
         });
@@ -205,6 +247,9 @@ function App() {
           name: nameSnapshot,
           phone: phoneSnapshot,
           address: addressSnapshot,
+          city: citySnapshot,
+          state: stateSnapshot,
+          pincode: pincodeSnapshot,
           totalOrders: 1,
           firstOrderDate: serverTimestamp(),
           lastOrderDate: serverTimestamp()
@@ -216,6 +261,9 @@ function App() {
         customerName: nameSnapshot,
         customerPhone: phoneSnapshot,
         customerAddress: addressSnapshot,
+        customerCity: citySnapshot,
+        customerState: stateSnapshot,
+        customerPincode: pincodeSnapshot,
         items: cartSnapshot.map(item => ({
           id: item.id,
           name: item.name,
@@ -301,6 +349,33 @@ function App() {
       unsubscribeProducts();
     };
   }, []);
+
+  // Prevent background scrolling when cart or checkout form is open
+  useEffect(() => {
+    if (isCartOpen || showCheckoutForm) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isCartOpen, showCheckoutForm]);
+
+  // Razorpay Button Script Injection
+  useEffect(() => {
+    if (showCheckoutForm && paymentMethod === "online") {
+      const container = document.getElementById("rzp-button-container");
+      if (container && !container.hasChildNodes()) {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/payment-button.js";
+        // PLACEHOLDER BUTTON ID - User can replace this later
+        script.setAttribute("data-payment_button_id", "pl_placeholder_id");
+        script.async = true;
+        container.appendChild(script);
+      }
+    }
+  }, [showCheckoutForm, paymentMethod]);
   if (!isOnline) {
     return <Offline />;
   }
@@ -395,9 +470,68 @@ function App() {
                   required
                   value={customerAddress}
                   onChange={(e) => setCustomerAddress(e.target.value)}
-                  placeholder="e.g. 123, Main Street, City"
-                  className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none transition resize-y min-h-[80px]"
+                  placeholder="Flat No, Apartment, Street name"
+                  className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none transition resize-y min-h-[60px]"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={customerCity}
+                    onChange={(e) => setCustomerCity(e.target.value)}
+                    placeholder="City"
+                    className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">Pincode</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      pattern="[0-9]{6}"
+                      maxLength="6"
+                      value={customerPincode}
+                      onChange={(e) => setCustomerPincode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="6-digit"
+                      className={`w-full p-3 border rounded focus:ring-2 focus:ring-orange-500 outline-none transition ${pincodeLoading ? 'bg-gray-50 border-orange-200' : 'border-gray-300'}`}
+                    />
+                    {pincodeLoading && (
+                      <div className="absolute right-3 top-3.5">
+                        <svg className="animate-spin h-4 w-4 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-2">State</label>
+                <select
+                  required
+                  value={customerState}
+                  onChange={(e) => setCustomerState(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none transition bg-white"
+                >
+                  <option value="">Select State</option>
+                  {[
+                    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+                    "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+                    "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+                    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+                    "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+                    "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+                  ].map(state => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="bg-orange-50 p-4 rounded mt-4 border border-orange-100">
@@ -406,6 +540,27 @@ function App() {
                   <span className="text-xl">₹{finalTotal}</span>
                 </div>
               </div>
+
+              {/* Payment Method Selection - Temporarily Hidden per user request */}
+              {/* 
+              <div className="flex flex-col gap-4 mt-6">
+                <div className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition hover:bg-orange-50" onClick={() => setPaymentMethod("whatsapp")}>
+                  <input type="radio" checked={paymentMethod === "whatsapp"} onChange={() => setPaymentMethod("whatsapp")} className="w-4 h-4 text-primary" />
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-800">Cash on Delivery / Manual Payment</p>
+                    <p className="text-xs text-gray-500">Confirm order and pay via WhatsApp</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition hover:bg-orange-50" onClick={() => setPaymentMethod("online")}>
+                  <input type="radio" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} className="w-4 h-4 text-primary" />
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-800">Pay Online Now</p>
+                    <p className="text-xs text-gray-500">Secure payment via Razorpay</p>
+                  </div>
+                </div>
+              </div>
+              */}
 
               <button
                 type="submit"

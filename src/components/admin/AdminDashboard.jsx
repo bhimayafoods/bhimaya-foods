@@ -212,27 +212,7 @@ const AdminDashboard = () => {
             if (response.ok && data.token) {
                 setShiprocketToken(data.token);
                 
-                // Also fetch pickup locations automatically
-                try {
-                    const locationsRes = await fetch('/api/shiprocket/settings/get/pickup', {
-                        method: 'GET',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${data.token}`
-                        }
-                    });
-                    const locationsData = await locationsRes.json();
-                    if (locationsData.data && locationsData.data.shipping_address) {
-                        const locations = locationsData.data.shipping_address;
-                        setPickupLocations(locations);
-                        if (locations.length > 0) {
-                            setSelectedPickup(locations[0].pickup_location);
-                        }
-                    }
-                } catch (locError) {
-                    console.error("Error fetching locations:", locError);
-                }
-
+                // Success alert
                 alert("✅ Successfully logged in to Shiprocket!");
             } else {
                 // More detailed error for the user
@@ -253,18 +233,22 @@ const AdminDashboard = () => {
             setTimeout(() => setShakeTokenInput(false), 500);
             shiprocketTokenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             shiprocketTokenRef.current?.focus();
-            return alert("⚠️ Please enter your Shiprocket API Token in the purple box above first!");
+            return alert("⚠️ Please login to Shiprocket first!");
         }
+
+        if (pickupLocations.length > 0 && !selectedPickup) {
+            return alert("Please select a Pickup Location first.");
+        }
+        
+        setIsSyncing(prev => ({ ...prev, [order.id]: true }));
+
+        // Pre-open a blank window to bypass popup blockers
+        const newWindow = window.open('about:blank', '_blank');
 
         // Hard validation for Shiprocket requirements
         if (!order.customerCity || !order.customerState || !order.customerPincode) {
             return alert("❌ Missing Data: This order is missing City, State, or Pincode. Shiprocket requires these separate fields. Please update the order manually if possible, or use the CSV Export.");
         }
-
-        setIsSyncing(prev => ({ ...prev, [order.id]: true }));
-
-        // Pre-open a blank window to bypass popup blockers
-        const newWindow = window.open('about:blank', '_blank');
 
         try {
             // Safely format date
@@ -337,9 +321,9 @@ const AdminDashboard = () => {
                 } else {
                     // If Shiprocket says OK but didn't give an ID, it's usually a validation error in their JSON
                     console.error("Shiprocket Success but No ID:", result);
+                    if (newWindow) newWindow.close();
                     const errorDetail = result.message || (result.errors ? JSON.stringify(result.errors) : "Unknown API response");
                     alert(`⚠️ Shiprocket didn't return an Order ID.\n\nMessage: ${errorDetail}`);
-                    if (newWindow) newWindow.close();
                 }
                 
                 // Save Shiprocket IDs to the order document (if we have them)
@@ -351,6 +335,7 @@ const AdminDashboard = () => {
                     });
                 }
             } else {
+                if (newWindow) newWindow.close();
                 console.error("Shiprocket API Error:", result);
                 let errorMsg = result.message || "Invalid Data";
                 if (result.errors) {
@@ -360,7 +345,6 @@ const AdminDashboard = () => {
                     errorMsg += `\n\nDetails:\n${detailedErrors}`;
                 }
                 alert(`❌ Sync Failed: ${errorMsg}`);
-                if (newWindow) newWindow.close();
             }
         } catch (error) {
             if (newWindow) newWindow.close();
@@ -530,6 +514,33 @@ const AdminDashboard = () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
+
+    // Fetch Pickup Locations whenever Token changes
+    useEffect(() => {
+        const fetchPickupLocations = async () => {
+            if (!shiprocketToken) return;
+            try {
+                const response = await fetch('/api/shiprocket/settings/get/pickup', {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${shiprocketToken}`
+                    }
+                });
+                const result = await response.json();
+                if (response.ok && result.data?.shipping_address) {
+                    const locations = result.data.shipping_address;
+                    setPickupLocations(locations);
+                    if (locations.length > 0 && !selectedPickup) {
+                        setSelectedPickup(locations[0].pickup_location);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching pickup locations:", error);
+            }
+        };
+        fetchPickupLocations();
+    }, [shiprocketToken]);
 
     useEffect(() => {
         fetchProducts();

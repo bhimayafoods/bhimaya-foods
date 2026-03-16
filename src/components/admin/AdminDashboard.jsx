@@ -60,6 +60,8 @@ const AdminDashboard = () => {
     const [showSrPassword, setShowSrPassword] = useState(false);
     const [pickupLocations, setPickupLocations] = useState([]);
     const [selectedPickup, setSelectedPickup] = useState('');
+    const [locationsLoading, setLocationsLoading] = useState(false);
+    const [locationsError, setLocationsError] = useState('');
 
     // Ref to hold the onSnapshot unsubscribe function (prevents duplicate listeners)
     const ordersUnsubRef = useRef(null);
@@ -194,6 +196,36 @@ const AdminDashboard = () => {
         }));
     };
 
+    const fetchPickupLocations = async (token = shiprocketToken) => {
+        if (!token) return;
+        setLocationsLoading(true);
+        setLocationsError('');
+        try {
+            const response = await fetch('/api/shiprocket/settings/get/pickup', {
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const result = await response.json();
+            if (response.ok && result.data?.shipping_address) {
+                const locations = result.data.shipping_address;
+                setPickupLocations(locations);
+                if (locations.length > 0) {
+                    setSelectedPickup(locations[0].pickup_location);
+                }
+            } else {
+                setLocationsError(result.message || "Failed to load locations");
+            }
+        } catch (error) {
+            console.error("Error fetching pickup locations:", error);
+            setLocationsError("Connection error while loading locations");
+        } finally {
+            setLocationsLoading(false);
+        }
+    };
+
     const handleShiprocketLogin = async (e) => {
         if (e) e.preventDefault();
         const email = shiprocketEmail.trim();
@@ -211,8 +243,7 @@ const AdminDashboard = () => {
             const data = await response.json();
             if (response.ok && data.token) {
                 setShiprocketToken(data.token);
-                
-                // Success alert
+                fetchPickupLocations(data.token);
                 alert("✅ Successfully logged in to Shiprocket!");
             } else {
                 // More detailed error for the user
@@ -517,29 +548,9 @@ const AdminDashboard = () => {
 
     // Fetch Pickup Locations whenever Token changes
     useEffect(() => {
-        const fetchPickupLocations = async () => {
-            if (!shiprocketToken) return;
-            try {
-                const response = await fetch('/api/shiprocket/settings/get/pickup', {
-                    method: 'GET',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${shiprocketToken}`
-                    }
-                });
-                const result = await response.json();
-                if (response.ok && result.data?.shipping_address) {
-                    const locations = result.data.shipping_address;
-                    setPickupLocations(locations);
-                    if (locations.length > 0 && !selectedPickup) {
-                        setSelectedPickup(locations[0].pickup_location);
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching pickup locations:", error);
-            }
-        };
-        fetchPickupLocations();
+        if (shiprocketToken && pickupLocations.length === 0) {
+            fetchPickupLocations();
+        }
     }, [shiprocketToken]);
 
     useEffect(() => {
@@ -1234,21 +1245,51 @@ const AdminDashboard = () => {
                                     )}
                                 </div>
 
-                                {shiprocketToken && pickupLocations.length > 0 && (
-                                    <div className="mt-4 flex items-center gap-3 bg-white/50 p-2 rounded-lg border border-purple-100 flex-wrap">
-                                        <span className="text-xs font-bold text-purple-700">Pickup Location:</span>
-                                        <select 
-                                            value={selectedPickup} 
-                                            onChange={(e) => setSelectedPickup(e.target.value)}
-                                            className="text-xs p-1.5 border border-purple-200 rounded bg-white outline-none focus:ring-1 focus:ring-purple-500"
-                                        >
-                                            {pickupLocations.map((loc, idx) => (
-                                                <option key={idx} value={loc.pickup_location}>
-                                                    {loc.pickup_location} ({loc.city})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p className="text-[10px] text-purple-400">Orders will be synced using this warehouse address.</p>
+                                {shiprocketToken && (
+                                    <div className="mt-4 p-3 bg-white/50 rounded-lg border border-purple-100">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-purple-700">Pickup Location Selection</span>
+                                            {locationsLoading && <span className="text-[10px] text-purple-400 italic">Syncing warehouses...</span>}
+                                        </div>
+
+                                        {pickupLocations.length > 0 ? (
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <select 
+                                                    value={selectedPickup} 
+                                                    onChange={(e) => setSelectedPickup(e.target.value)}
+                                                    className="text-xs p-1.5 border border-purple-200 rounded bg-white outline-none focus:ring-1 focus:ring-purple-500 min-w-[150px]"
+                                                >
+                                                    {pickupLocations.map((loc, idx) => (
+                                                        <option key={idx} value={loc.pickup_location}>
+                                                            {loc.pickup_location} ({loc.city})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button 
+                                                    onClick={() => fetchPickupLocations()}
+                                                    className="p-1 px-2 border border-purple-200 rounded text-[10px] text-purple-600 hover:bg-purple-100 transition"
+                                                >
+                                                    ↻ Refresh
+                                                </button>
+                                                <p className="text-[10px] text-purple-400 w-full">Order will be picked up from this address.</p>
+                                            </div>
+                                        ) : !locationsLoading ? (
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-[10px] text-red-500">
+                                                    {locationsError || "No Pickup Locations found for your account."}
+                                                </p>
+                                                <button 
+                                                    onClick={() => fetchPickupLocations()}
+                                                    className="w-fit bg-purple-100 text-purple-700 px-3 py-1.5 rounded-md font-bold text-[10px] hover:bg-purple-200"
+                                                >
+                                                    Click to Load Pickup Locations
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="h-10 flex items-center justify-center">
+                                                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

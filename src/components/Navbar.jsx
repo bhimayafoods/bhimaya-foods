@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 function Navbar({ cartCount, openCart, hasBanner }) {
@@ -24,27 +25,29 @@ function Navbar({ cartCount, openCart, hasBanner }) {
 
         {/* Logo */}
         <div className="flex items-center h-full">
-          <img
-            src={logo}
-            alt="Bhimaya Foods Logo"
-            className="h-[100%] md:h-16 lg:h-20 object-contain transition-all duration-300"
-          />
+          <Link to="/" className="h-full flex items-center">
+            <img
+              src={logo}
+              alt="Bhimaya Foods Logo"
+              className="h-[100%] md:h-16 lg:h-20 object-contain transition-all duration-300"
+            />
+          </Link>
         </div>
 
         {/* Navigation */}
         <nav className="hidden lg:flex space-x-8 font-medium">
-          <a href="#home" className="hover:text-secondary transition">
+          <Link to="/" className="hover:text-secondary transition">
             Home
-          </a>
-          <a href="#products" className="hover:text-secondary transition">
+          </Link>
+          <a href="/#products" className="hover:text-secondary transition">
             Our Products
           </a>
-          <a href="#about" className="hover:text-secondary transition">
+          <Link to="/about-us" className="hover:text-secondary transition">
             Our Story
-          </a>
-          <a href="#contact" className="hover:text-secondary transition">
+          </Link>
+          <Link to="/contact-us" className="hover:text-secondary transition">
             Contact
-          </a>
+          </Link>
         </nav>
 
         {/* Cart Button */}

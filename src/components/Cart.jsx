@@ -154,7 +154,7 @@ function Cart({
               : "bg-primary text-white hover:opacity-90"
               }`}
           >
-            Proceed to WhatsApp
+            Place Order
           </button>
 
         </div>

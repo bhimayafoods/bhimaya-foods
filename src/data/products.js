@@ -1,5 +1,5 @@
 import rice from "../assets/rice.png";
-import blackGram from "../assets/Black gram.png";
+import blackGram from "../assets/Black Gram.png";
 import multigrain from "../assets/Multigrains Flour.png";
 import wheat from "../assets/Wheat Flour.png";
 import ragi from "../assets/Ragi Flour.png";

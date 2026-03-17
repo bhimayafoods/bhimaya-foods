@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { signOut } from 'firebase/auth';
+import { PRODUCTS } from '../../data/products';
 
 const AdminDashboard = () => {
     const [products, setProducts] = useState([]);
@@ -429,6 +430,35 @@ const AdminDashboard = () => {
             alert(`❌ Sync Error: ${error.message || "Unexpected connection issue"}.\n\nCheck console for technical details.`);
         } finally {
             setIsSyncing(prev => ({ ...prev, [order.id]: false }));
+        }
+    };
+
+    const handleRestoreDefaults = async () => {
+        if (!window.confirm("This will restore the default 12 starter products (Rice, Flours, Snacks) to your database. Existing products will NOT be deleted, but duplicates might be created if they have the same name. Proceed?")) return;
+
+        setLoading(true);
+        try {
+            let count = 0;
+            for (const product of PRODUCTS) {
+                // Check if product already exists to avoid exact duplicates
+                const exists = products.some(p => p.name === product.name);
+                if (!exists) {
+                    const { id, ...productData } = product; // Remove local id
+                    await addDoc(collection(db, "products"), {
+                        ...productData,
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                    count++;
+                }
+            }
+            alert(`✅ Successfully restored ${count} products.`);
+            fetchProducts();
+        } catch (error) {
+            console.error("Error restoring defaults:", error);
+            alert("❌ Failed to restore products: " + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1794,6 +1824,12 @@ const AdminDashboard = () => {
                                             className="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-black transition"
                                         >
                                             Purge All Customers
+                                        </button>
+                                        <button
+                                            onClick={handleRestoreDefaults}
+                                            className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 transition shadow-sm border-b-4 border-green-800 active:border-b-0 active:translate-y-1"
+                                        >
+                                            ✨ Restore Default Products
                                         </button>
                                     </div>
                                 </div>

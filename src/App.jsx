@@ -70,6 +70,35 @@ function App() {
 
   const WHATSAPP_NUMBER = "919493023030";
 
+  const WEIGHT_FACTORS = {
+    "250gm": 0.25,
+    "500gm": 0.5,
+    "1000gm": 1
+  };
+
+  // Sync cart prices with live product data
+  useEffect(() => {
+    if (products.length > 0 && cart.length > 0) {
+      let changed = false;
+      const updatedCart = cart.map(item => {
+        const liveProduct = products.find(p => String(p.id) === String(item.id));
+        if (liveProduct) {
+          const factor = WEIGHT_FACTORS[item.weight] || 1;
+          const currentPrice = Math.round(parseFloat(liveProduct.price) * factor);
+          if (item.price !== currentPrice) {
+            changed = true;
+            return { ...item, price: currentPrice };
+          }
+        }
+        return item;
+      });
+
+      if (changed) {
+        setCart(updatedCart);
+      }
+    }
+  }, [products]);
+
   const addToCart = (product, weight = "1000gm", price) => {
     const isOutOfStock =
       product.quantity?.toLowerCase().includes('out of stock') ||
@@ -78,14 +107,15 @@ function App() {
 
     if (isOutOfStock) return alert("Sorry, this item is out of stock.");
 
-    const itemPrice = price || product.price;
+    const factor = WEIGHT_FACTORS[weight] || 1;
+    const itemPrice = Math.round(parseFloat(product.price) * factor);
     const cartItemId = `${product.id}_${weight}`;
     const existing = cart.find((item) => String(item.cartItemId) === String(cartItemId));
 
     if (existing) {
       setCart(cart.map(item =>
         String(item.cartItemId) === String(cartItemId)
-          ? { ...item, quantity: item.quantity + 1 }
+          ? { ...item, quantity: item.quantity + 1, price: itemPrice }
           : item
       ));
     } else {
@@ -97,16 +127,24 @@ function App() {
 
   const increaseQuantity = (cartItemId) => {
     const cartItemIdStr = String(cartItemId);
-    const productId = cartItemIdStr.split('_')[0];
+    const parts = cartItemIdStr.split('_');
+    const productId = parts[0];
+    const weight = parts[1] || "1000gm";
+    
     const product = products.find(p => String(p.id) === productId);
     const isOutOfStock =
       product?.quantity?.toLowerCase().includes('out of stock') ||
       product?.description?.toLowerCase().includes('out of stock') ||
       product?.quantity === '0';
+
     if (isOutOfStock) return alert("Sorry, this item is currently out of stock and cannot be increased.");
+    
+    const factor = WEIGHT_FACTORS[weight] || 1;
+    const itemPrice = product ? Math.round(parseFloat(product.price) * factor) : null;
+
     setCart(cart.map(item =>
       String(item.cartItemId) === cartItemIdStr
-        ? { ...item, quantity: item.quantity + 1 }
+        ? { ...item, quantity: item.quantity + 1, price: itemPrice || item.price }
         : item
     ));
   };

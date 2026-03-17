@@ -7,9 +7,27 @@ html {
 }
 
 body {
-  @apply bg-background font-outfit text-gray-800;
+  @apply bg-background font-outfit text-gray-800 transition-colors duration-300;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+/* Specific class to allow selection for devs/owners */
+.selection-enabled {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Prevent image dragging (ghosting) */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: auto; /* Ensure they can still be clicked! */
 }

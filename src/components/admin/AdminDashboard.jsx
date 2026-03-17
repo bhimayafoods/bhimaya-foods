@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { signOut } from 'firebase/auth';
 
@@ -22,6 +22,7 @@ const AdminDashboard = () => {
     const [closedMessage, setClosedMessage] = useState('');
     const [promotionalBanner, setPromotionalBanner] = useState('🚚 Free Delivery for orders above ₹499+ 🎉');
     const [freeDeliveryLimit, setFreeDeliveryLimit] = useState(499);
+    const [codLimit, setCodLimit] = useState(1000); // Default COD limit
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
     const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
     const [settingsLoading, setSettingsLoading] = useState(true);
@@ -112,16 +113,14 @@ const AdminDashboard = () => {
             const docRef = doc(db, "settings", "store");
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setIsStoreOpen(docSnap.data().isOpen !== false);
-                setClosedMessage(docSnap.data().closedMessage || '');
-                if (docSnap.data().promotionalBanner) {
-                    setPromotionalBanner(docSnap.data().promotionalBanner);
-                }
-                if (docSnap.data().freeDeliveryLimit) {
-                    setFreeDeliveryLimit(docSnap.data().freeDeliveryLimit);
-                }
-                setIsMaintenanceMode(docSnap.data().isMaintenanceMode || false);
-                setMaintenanceEndTime(docSnap.data().maintenanceEndTime || '');
+                const data = docSnap.data();
+                setIsStoreOpen(data.isOpen !== false);
+                setClosedMessage(data.closedMessage || '');
+                setPromotionalBanner(data.promotionalBanner || '🚚 Free Delivery for orders above ₹499+ 🎉');
+                setFreeDeliveryLimit(data.freeDeliveryLimit || 499);
+                setCodLimit(data.codLimit || 1000); // Fetch COD limit
+                setIsMaintenanceMode(data.isMaintenanceMode || false);
+                setMaintenanceEndTime(data.maintenanceEndTime || '');
             }
         } catch (error) {
             console.error("Error fetching settings:", error);
@@ -667,7 +666,9 @@ const AdminDashboard = () => {
                 isOpen: isStoreOpen,
                 closedMessage: closedMessage,
                 promotionalBanner: promotionalBanner,
-                freeDeliveryLimit: parseInt(freeDeliveryLimit) || 499
+                freeDeliveryLimit: Number(freeDeliveryLimit),
+                codLimit: Number(codLimit), // Save COD limit
+                updatedAt: serverTimestamp()
             }, { merge: true });
             alert("Settings saved!");
         } catch (error) {
@@ -896,6 +897,19 @@ const AdminDashboard = () => {
                                             min="0"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Orders above this amount get free delivery. This updates the cart in real-time.</p>
+                                    </div>
+
+                                    <div className="mt-4 border-t pt-4">
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Maximum COD Amount (₹)</label>
+                                        <input
+                                            type="number"
+                                            value={codLimit}
+                                            onChange={(e) => setCodLimit(e.target.value)}
+                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
+                                            placeholder="e.g. 1000"
+                                            min="0"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Cash on Delivery will be disabled for orders above this amount.</p>
                                     </div>
 
                                     <div className="mt-4 border-t pt-4">

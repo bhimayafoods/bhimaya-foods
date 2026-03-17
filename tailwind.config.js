@@ -24,7 +24,7 @@ export default {
         playfair: ["Playfair Display", "serif"],
       },
       animation: {
-        marquee: "marquee 25s linear infinite",
+        marquee: "marquee 30s linear infinite",
       },
       keyframes: {
         marquee: {

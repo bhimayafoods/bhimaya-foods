@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-function Navbar({ cartCount, openCart, hasBanner }) {
+function Navbar({ cartCount, openCart, hasBanner, hideLinks }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -35,20 +35,22 @@ function Navbar({ cartCount, openCart, hasBanner }) {
         </div>
 
         {/* Navigation */}
-        <nav className="hidden lg:flex space-x-8 font-medium">
-          <Link to="/" className="hover:text-secondary transition">
-            Home
-          </Link>
-          <a href="/#products" className="hover:text-secondary transition">
-            Our Products
-          </a>
-          <Link to="/about-us" className="hover:text-secondary transition">
-            Our Story
-          </Link>
-          <Link to="/contact-us" className="hover:text-secondary transition">
-            Contact
-          </Link>
-        </nav>
+        {!hideLinks && (
+          <nav className="hidden lg:flex space-x-8 font-medium">
+            <Link to="/" className="hover:text-secondary transition">
+              Home
+            </Link>
+            <a href="/#products" className="hover:text-secondary transition">
+              Our Products
+            </a>
+            <Link to="/about-us" className="hover:text-secondary transition">
+              Our Story
+            </Link>
+            <Link to="/contact-us" className="hover:text-secondary transition">
+              Contact
+            </Link>
+          </nav>
+        )}
 
         {/* Cart Button */}
         {/* <button
@@ -60,8 +62,8 @@ function Navbar({ cartCount, openCart, hasBanner }) {
             {cartCount}
           </span>
         </button> */}
-        <div
-          onClick={openCart}
+        <Link
+          to="/cart"
           className="relative cursor-pointer bg-primary text-white p-3 rounded-full hover:scale-105 transition mt-[5px] flex items-center justify-center"
         >
           <svg
@@ -82,7 +84,7 @@ function Navbar({ cartCount, openCart, hasBanner }) {
           <span className="absolute -top-2 -right-2 bg-secondary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">
             {cartCount}
           </span>
-        </div>
+        </Link>
 
 
       </div>

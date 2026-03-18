@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc,
 import { auth, db } from '../../firebase';
 import { signOut } from 'firebase/auth';
 import { PRODUCTS } from '../../data/products';
+import OrderInvoice from './OrderInvoice';
 
 const AdminDashboard = () => {
     const [products, setProducts] = useState([]);
@@ -46,6 +47,7 @@ const AdminDashboard = () => {
     const [productSearch, setProductSearch] = useState('');
     const [orderSearch, setOrderSearch] = useState('');
     const [lastOrderSync, setLastOrderSync] = useState('');
+    const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
 
     // Dashboard UI State
     const [activeTab, setActiveTab] = useState('analytics');
@@ -1471,6 +1473,11 @@ const AdminDashboard = () => {
                                     75% { transform: translateX(5px); }
                                 }
                                 .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+                                @media print {
+                                    body * { visibility: hidden; }
+                                    #invoice-to-print, #invoice-to-print * { visibility: visible; }
+                                    #invoice-to-print { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+                                }
                             `}} />
 
                             {ordersLoading ? (
@@ -1642,6 +1649,18 @@ const AdminDashboard = () => {
                                                                     <option value="Successful">✅ Successful</option>
                                                                     <option value="Failed">❌ Failed</option>
                                                                 </select>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedOrderForInvoice(order);
+                                                                        setTimeout(() => {
+                                                                            window.print();
+                                                                            setTimeout(() => setSelectedOrderForInvoice(null), 1000);
+                                                                        }, 300);
+                                                                    }}
+                                                                    className="mt-1 w-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 px-2 py-1 rounded text-[10px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
+                                                                >
+                                                                    📄 Invoice
+                                                                </button>
                                                                 {((pendingUpdates[order.id]?.paymentStatus || order.paymentStatus) === 'Successful') && (
                                                                     <input
                                                                         type="text"
@@ -1681,6 +1700,11 @@ const AdminDashboard = () => {
                                             })()}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+                            {selectedOrderForInvoice && (
+                                <div className="hidden print:block">
+                                    <OrderInvoice order={selectedOrderForInvoice} />
                                 </div>
                             )}
                         </div>

@@ -16,7 +16,7 @@ function Navbar({ cartCount, openCart, hideLinks }) {
 
   return (
     <header
-      className={`sticky top-0 w-full z-50 transition-all duration-300 ${scrolled
+      className={`sticky top-0 w-full z-[100] transition-all duration-300 ${scrolled
           ? "bg-background shadow-md"
           : "bg-background/90"
         }`}

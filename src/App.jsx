@@ -15,7 +15,7 @@ import Maintenance from "./components/Maintenance";
 import TopNotice from "./components/TopNotice";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import AboutUs from "./pages/AboutUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
@@ -24,6 +24,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import ContactUs from "./pages/ContactUs";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import { safeLocalStorageSet, safeSessionStorageSet } from "./utils/storage";
 
 function App() {
   // Skip loader if we already have cached products from this session
@@ -41,13 +42,17 @@ function App() {
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('bhimaya_cart');
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
     } catch { return []; }
   });
   const [products, setProducts] = useState(() => {
     try {
       const cached = sessionStorage.getItem('bhimaya_products');
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
     } catch { return []; }
   });
   const [user, setUser] = useState(null);
@@ -85,20 +90,24 @@ function App() {
 
   // Sync cart prices with live product data
   useEffect(() => {
-    if (products.length > 0 && cart.length > 0) {
+    if (Array.isArray(products) && products.length > 0 && Array.isArray(cart) && cart.length > 0) {
       let changed = false;
       const updatedCart = cart.map(item => {
-        const liveProduct = products.find(p => String(p.id) === String(item.id));
+        if (!item || !item.id) return item;
+        const liveProduct = products.find(p => p && String(p.id) === String(item.id));
         if (liveProduct) {
           const factor = WEIGHT_FACTORS[item.weight] || 1;
-          const currentPrice = Math.round(parseFloat(liveProduct.price) * factor);
+          const livePrice = parseFloat(liveProduct.price);
+          if (isNaN(livePrice)) return item;
+          
+          const currentPrice = Math.round(livePrice * factor);
           if (item.price !== currentPrice) {
             changed = true;
             return { ...item, price: currentPrice };
           }
         }
         return item;
-      });
+      }).filter(Boolean);
 
       if (changed) {
         setCart(updatedCart);
@@ -133,7 +142,7 @@ function App() {
       setCart([...cart, { ...product, cartItemId, weight, price: itemPrice, quantity: 1 }]);
     }
 
-    // setIsCartOpen(true); // User requested to disable auto-open
+    setIsCartOpen(true);
   };
 
   const increaseQuantity = (cartItemId) => {
@@ -175,7 +184,12 @@ function App() {
     }
   };
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = Array.isArray(cart) ? cart.reduce((sum, item) => {
+    const price = parseFloat(item?.price) || 0;
+    const qty = parseInt(item?.quantity) || 0;
+    return sum + (price * qty);
+  }, 0) : 0;
+
   const DELIVERY_CHARGE = 50;
   const FREE_LIMIT = storeSettings?.freeDeliveryLimit || 999;
   const COD_FEE = 9;
@@ -399,7 +413,9 @@ function App() {
 
   // Persist cart to localStorage so it survives page refreshes
   useEffect(() => {
-    localStorage.setItem('bhimaya_cart', JSON.stringify(cart));
+    if (Array.isArray(cart)) {
+      safeLocalStorageSet('bhimaya_cart', cart);
+    }
   }, [cart]);
 
   useEffect(() => {
@@ -410,7 +426,7 @@ function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setStoreSettings(data);
-          try { localStorage.setItem('bhimaya_settings', JSON.stringify(data)); } catch { }
+          safeLocalStorageSet('bhimaya_settings', data);
         } else {
           setStoreSettings({ isOpen: true, closedMessage: '' });
         }
@@ -437,7 +453,7 @@ function App() {
         }));
         setProducts(productsList);
         // Cache products so the next page refresh shows them instantly
-        try { sessionStorage.setItem('bhimaya_products', JSON.stringify(productsList)); } catch { }
+        safeSessionStorageSet('bhimaya_products', productsList);
         setLoading(false);
       },
       (error) => {
@@ -573,6 +589,7 @@ function App() {
             isStoreOpen={storeSettings?.isOpen !== false}
           />
         } />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!['/cart', '/checkout'].includes(location.pathname) && <Footer />}
 

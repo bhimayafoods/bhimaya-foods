@@ -19,7 +19,8 @@ const CartPage = ({
   }, []);
 
   const isItemOutOfStock = (item) => {
-    const liveProduct = products?.find(p => p.id === item.id);
+    if (!item || !item.id) return false;
+    const liveProduct = products?.find(p => p && p.id === item.id);
     return (
       liveProduct?.quantity?.toLowerCase().includes('out of stock') ||
       liveProduct?.description?.toLowerCase().includes('out of stock') ||
@@ -27,7 +28,7 @@ const CartPage = ({
     );
   };
 
-  if (cart.length === 0) {
+  if (!Array.isArray(cart) || cart.length === 0) {
     return (
       <div className="pt-28 md:pt-36 pb-16 min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4">
         <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md w-full border border-gray-200">
@@ -60,9 +61,9 @@ const CartPage = ({
             
             {/* Items List */}
             <div className="bg-white rounded shadow-sm overflow-hidden border border-gray-200">
-              {cart.map((item) => {
+              {cart.filter(item => item && item.cartItemId).map((item) => {
                 const outOfStock = isItemOutOfStock(item);
-                const itemTotal = item.price * item.quantity;
+                const itemTotal = (parseFloat(item.price) || 0) * (item.quantity || 0);
 
                 return (
                   <div key={item.cartItemId} className={`p-4 md:p-6 border-b last:border-b-0 flex flex-row gap-4 md:gap-6 ${outOfStock ? 'opacity-70 bg-gray-50' : ''}`}>
@@ -142,7 +143,7 @@ const CartPage = ({
                 
                 <div className="p-4 space-y-4 text-gray-800">
                   <div className="flex justify-between">
-                    <span>Price ({cart.length} {cart.length === 1 ? 'item' : 'items'})</span>
+                    <span>Price ({cart.filter(item => item && item.cartItemId).length} {cart.filter(item => item && item.cartItemId).length === 1 ? 'item' : 'items'})</span>
                     <span>₹{total}</span>
                   </div>
                   

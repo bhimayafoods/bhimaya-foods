@@ -14,9 +14,19 @@
 
 
 
+import { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 
 function Loader() {
+  const [showReload, setShowReload] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowReload(true);
+    }, 5000); // Show reload button if loading for more than 5 seconds
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-background flex items-center justify-center z-[9999]">
       <div className="flex flex-col items-center gap-8">
@@ -32,6 +42,15 @@ function Loader() {
         <div className="w-48 h-[3px] bg-gray-200 overflow-hidden rounded-full">
           <div className="h-full w-1/2 bg-primary animate-[loading_1.2s_ease-in-out_infinite]"></div>
         </div>
+
+        {showReload && (
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:scale-105 transition shadow-lg"
+          >
+            Take too long? Reload Page
+          </button>
+        )}
 
       </div>
 

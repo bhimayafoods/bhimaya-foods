@@ -66,7 +66,7 @@ const CheckoutPage = ({
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (cart.length === 0) {
+    if (!Array.isArray(cart) || cart.length === 0) {
       navigate('/cart');
     }
   }, [cart, navigate]);
@@ -106,6 +106,8 @@ const CheckoutPage = ({
     const { name, value } = e.target;
     setCustomerDetails(prev => ({ ...prev, [name]: value }));
   };
+
+  const safeCart = Array.isArray(cart) ? cart.filter(item => item && item.id) : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 mt-16 md:mt-20 flex flex-col">
@@ -218,7 +220,7 @@ const CheckoutPage = ({
               <div className="space-y-4">
                 <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800 uppercase text-sm tracking-widest">Order Summary</h2>
+                     <h2 className="text-xl font-bold text-gray-800 uppercase text-sm tracking-widest">Order Summary</h2>
                   </div>
                   
                   {/* Address Summary Block */}
@@ -235,15 +237,15 @@ const CheckoutPage = ({
 
                   {/* Items list */}
                   <div className="space-y-6">
-                    {cart.map(item => (
-                      <div key={item.cartItemId} className="flex gap-4 border-b pb-6 last:border-b-0">
+                    {safeCart.map(item => (
+                      <div key={item.cartItemId || item.id} className="flex gap-4 border-b pb-6 last:border-b-0">
                          <div className="w-20 h-20 flex-shrink-0 border border-gray-100 p-1">
                             <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
                          </div>
                          <div className="flex-1">
                             <h3 className="font-medium text-gray-800">{item.name} ({item.weight})</h3>
                             <p className="text-sm text-gray-500 mt-1">Qty: {item.quantity}</p>
-                            <p className="text-lg font-bold mt-2">₹{item.price * item.quantity}</p>
+                            <p className="text-lg font-bold mt-2">₹{(parseFloat(item.price) || 0) * (item.quantity || 0)}</p>
                          </div>
                       </div>
                     ))}
@@ -335,7 +337,7 @@ const CheckoutPage = ({
                        <span className="text-gray-800">Price</span>
                        <span className="text-gray-900 font-medium">₹{total}</span>
                     </div>
-                    <span className="text-[12px] text-gray-500">({cart.length} item{cart.length > 1 ? 's' : ''})</span>
+                    <span className="text-[12px] text-gray-500">({safeCart.length} item{safeCart.length > 1 ? 's' : ''})</span>
                   </div>
                   
                   <div className="flex justify-between items-center text-[15px]">

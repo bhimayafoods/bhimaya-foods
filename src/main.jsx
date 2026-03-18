@@ -7,11 +7,14 @@ import AdminDashboard from "./components/admin/AdminDashboard";
 import PrivateRoute from "./components/admin/PrivateRoute";
 import "./index.css";
 
+import ErrorBoundary from "./components/ErrorBoundary";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/*" element={<App />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/*" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={
           <PrivateRoute>
@@ -20,5 +23,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         } />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );

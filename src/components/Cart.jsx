@@ -14,7 +14,8 @@ function Cart({
   const FREE_LIMIT = freeDeliveryLimit || 499;
 
   const isItemOutOfStock = (item) => {
-    const liveProduct = products?.find(p => p.id === item.id);
+    if (!item || !item.id) return false;
+    const liveProduct = products?.find(p => p && p.id === item.id);
     return (
       liveProduct?.quantity?.toLowerCase().includes('out of stock') ||
       liveProduct?.description?.toLowerCase().includes('out of stock') ||
@@ -22,11 +23,11 @@ function Cart({
     );
   };
 
-  const hasOutOfStockItem = cart.some(item => isItemOutOfStock(item));
+  const hasOutOfStockItem = Array.isArray(cart) && cart.some(item => isItemOutOfStock(item));
 
   // ✅ Correct Delivery Logic
   const delivery =
-    cart.length === 0
+    !Array.isArray(cart) || cart.length === 0
       ? 0
       : total >= FREE_LIMIT
         ? 0
@@ -59,15 +60,15 @@ function Cart({
 
         {/* Scrollable Items */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {cart.length === 0 ? (
+          {!Array.isArray(cart) || cart.length === 0 ? (
             <p className="text-gray-500 text-center mt-10">
               Your cart is empty.
             </p>
           ) : (
-            cart.map((item) => {
+            cart.filter(item => item && item.id).map((item) => {
               const outOfStock = isItemOutOfStock(item);
               return (
-                <div key={item.id} className={`flex items-center space-x-4 ${outOfStock ? 'opacity-70' : ''}`}>
+                <div key={item.cartItemId || item.id} className={`flex items-center space-x-4 ${outOfStock ? 'opacity-70' : ''}`}>
                   <img
                     src={item.image}
                     alt={item.name}
@@ -80,7 +81,7 @@ function Cart({
                       <p className="text-xs text-red-500 font-bold">⚠️ Out of Stock — Please remove</p>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        ₹{item.price * item.quantity}
+                        ₹{(parseFloat(item.price) || 0) * (item.quantity || 0)}
                       </p>
                     )}
                   </div>

@@ -24,6 +24,8 @@ const AdminDashboard = () => {
     const [promotionalBanner, setPromotionalBanner] = useState('🚚 Free Delivery for orders above ₹499+ 🎉');
     const [freeDeliveryLimit, setFreeDeliveryLimit] = useState(499);
     const [codLimit, setCodLimit] = useState(1000); // Default COD limit
+    const [topInfoMessage, setTopInfoMessage] = useState(''); // Custom top info bar
+    const [showTopInfo, setShowTopInfo] = useState(false);
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
     const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
     const [settingsLoading, setSettingsLoading] = useState(true);
@@ -120,6 +122,8 @@ const AdminDashboard = () => {
                 setPromotionalBanner(data.promotionalBanner || '🚚 Free Delivery for orders above ₹499+ 🎉');
                 setFreeDeliveryLimit(data.freeDeliveryLimit || 499);
                 setCodLimit(data.codLimit || 1000); // Fetch COD limit
+                setTopInfoMessage(data.topInfoMessage || '');
+                setShowTopInfo(data.showTopInfo || false);
                 setIsMaintenanceMode(data.isMaintenanceMode || false);
                 setMaintenanceEndTime(data.maintenanceEndTime || '');
             }
@@ -698,6 +702,8 @@ const AdminDashboard = () => {
                 promotionalBanner: promotionalBanner,
                 freeDeliveryLimit: Number(freeDeliveryLimit),
                 codLimit: Number(codLimit), // Save COD limit
+                topInfoMessage: topInfoMessage,
+                showTopInfo: showTopInfo,
                 updatedAt: serverTimestamp()
             }, { merge: true });
             alert("Settings saved!");
@@ -807,8 +813,8 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8">
-            <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-8 bg-white p-4 rounded shadow-sm sticky top-0 z-40 relative">
                     <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
 
@@ -892,13 +898,13 @@ const AdminDashboard = () => {
                                 <p>Loading settings...</p>
                             ) : (
                                 <form onSubmit={handleSaveSettings} className="space-y-4">
-                                    <div className="flex items-center space-x-3 mb-2">
+                                    <div className="flex items-start gap-3 mb-2">
                                         <input
                                             type="checkbox"
                                             id="storeOpen"
                                             checked={isStoreOpen}
                                             onChange={(e) => setIsStoreOpen(e.target.checked)}
-                                            className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                                            className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 flex-shrink-0 mt-0.5"
                                         />
                                         <label htmlFor="storeOpen" className="font-bold text-gray-700">Store is currently accepting orders</label>
                                     </div>
@@ -954,6 +960,27 @@ const AdminDashboard = () => {
                                         <p className="text-xs text-gray-500 mt-1">This message scrolls across the top ribbon of your website.</p>
                                     </div>
 
+                                    <div className="mt-4 border-t pt-4">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <input
+                                                type="checkbox"
+                                                id="showTopInfo"
+                                                checked={showTopInfo}
+                                                onChange={(e) => setShowTopInfo(e.target.checked)}
+                                                className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                                            />
+                                            <label htmlFor="showTopInfo" className="font-bold text-gray-700 underline decoration-orange-300">Display Top Static Announcement Bar</label>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={topInfoMessage}
+                                            onChange={(e) => setTopInfoMessage(e.target.value)}
+                                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
+                                            placeholder="e.g. 📢 Important: Shop closed for Holi from 25th - 26th March."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">This message stays static at the very top of all pages (above the scrolling ribbon).</p>
+                                    </div>
+
                                     <button type="submit" className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition px-6 mt-4 w-full md:w-auto">
                                         Save Settings
                                     </button>
@@ -975,7 +1002,7 @@ const AdminDashboard = () => {
                                     <svg className={`w-5 h-5 transition-transform duration-700 ${isRefreshing.categories ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                 </button>
                             </h2>
-                            <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+                            <form onSubmit={handleAddCategory} className="flex flex-wrap gap-2 mb-4">
                                 <input
                                     type="text"
                                     value={newCategoryName}
@@ -1087,12 +1114,12 @@ const AdminDashboard = () => {
                                             className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none h-24" placeholder="Product details..." />
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <button type="submit" className="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600 transition">
+                                    <div className="flex flex-wrap gap-2">
+                                        <button type="submit" className="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600 transition min-w-[100px]">
                                             {editingId ? 'Update' : 'Save'}
                                         </button>
                                         {editingId && (
-                                            <button type="button" onClick={resetForm} className="bg-gray-400 text-white p-2 rounded hover:bg-gray-500 transition">
+                                            <button type="button" onClick={resetForm} className="bg-gray-400 text-white p-2 rounded hover:bg-gray-500 transition min-w-[100px]">
                                                 Cancel
                                             </button>
                                         )}
@@ -1134,7 +1161,6 @@ const AdminDashboard = () => {
                                                     </tr>
                                                 ) : (
                                                     products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.category.toLowerCase().includes(productSearch.toLowerCase())).map(product => {
-                                                        const isLowStock = product.quantity?.toLowerCase().includes('out of stock') || product.quantity === '0' || product.quantity?.toLowerCase().includes('low');
                                                         return (
                                                             <tr key={product.id} className={`border-b hover:bg-gray-50`}>
                                                                 <td className="p-3">
@@ -1152,10 +1178,12 @@ const AdminDashboard = () => {
                                                                         ))}
                                                                     </div>
                                                                 </td>
-                                                                <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                                                                    <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700">Edit</button>
-                                                                    <button onClick={() => handleDelete(product.id)} className="text-red-500 hover:text-red-700">Delete</button>
-                                                                </td>
+                                                                <td className="p-3 text-right">
+                                                                    <div className="flex justify-end gap-3 flex-wrap min-w-[120px]">
+                                                                        <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700 font-bold text-sm">Edit</button>
+                                                                        <button onClick={() => handleDelete(product.id)} className="text-red-500 hover:text-red-700 font-bold text-sm">Delete</button>
+                                                                    </div>
+                                                                 </td>
                                                             </tr>
                                                         );
                                                     })
@@ -1181,7 +1209,7 @@ const AdminDashboard = () => {
                                         <svg className={`w-5 h-5 transition-transform duration-700 ${isRefreshing.orders ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                     </button>
                                 </h2>
-                                <div className="flex gap-2 w-full md:w-auto">
+                                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                                     <input
                                         type="text"
                                         placeholder="Search order ID or status..."
@@ -1412,7 +1440,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between mb-4 bg-white/50 p-4 rounded-2xl border border-gray-100">
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-white/50 p-4 rounded-2xl border border-gray-100">
                                 <div className="flex items-center gap-3">
                                     <div className="bg-green-500 w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
                                     <h3 className="text-xl font-bold text-gray-800">Live Orders</h3>
@@ -1802,12 +1830,12 @@ const AdminDashboard = () => {
                                         >
                                             Purge All Customers
                                         </button>
-                                        <button
+                                        {/* <button
                                             onClick={handleRestoreDefaults}
                                             className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 transition shadow-sm border-b-4 border-green-800 active:border-b-0 active:translate-y-1"
                                         >
                                             ✨ Restore Default Products
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
 
@@ -1832,14 +1860,14 @@ const AdminDashboard = () => {
                                         <p className="text-xs text-orange-600 mt-1">Set this <b>before</b> turning on the switch. Leave blank for no specific time.</p>
                                     </div>
 
-                                    <div className="flex items-center space-x-3 pt-2 border-t border-orange-200">
+                                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-orange-200">
                                         <button
                                             onClick={handleToggleMaintenanceMode}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${isMaintenanceMode ? 'bg-orange-600' : 'bg-gray-200'}`}
+                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${isMaintenanceMode ? 'bg-orange-600' : 'bg-gray-200'}`}
                                         >
                                             <span className={`${isMaintenanceMode ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                                         </button>
-                                        <span className={`font-bold ${isMaintenanceMode ? 'text-orange-700' : 'text-gray-500'}`}>
+                                        <span className={`font-bold text-sm md:text-base ${isMaintenanceMode ? 'text-orange-700' : 'text-gray-500'}`}>
                                             {isMaintenanceMode ? "Status: OFFLINE (Maintenance Mode Active)" : "Status: ONLINE (Public Access Active)"}
                                         </span>
                                     </div>

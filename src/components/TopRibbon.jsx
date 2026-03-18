@@ -23,7 +23,9 @@ function TopRibbon() {
   const messages = bannerText.split(/[|•]|(?=🚚|📦|🎁|🔥|🎉)/).filter(m => m.trim().length > 0);
 
   return (
-    <div className="bg-[#0a4d2e] bg-gradient-to-r from-[#0a4d2e] via-[#145a32] to-[#0a4d2e] text-white overflow-hidden py-2 border-b border-white/10 shadow-sm mt-[50px]">
+    <div 
+      className="bg-[#0a4d2e] bg-gradient-to-r from-[#0a4d2e] via-[#145a32] to-[#0a4d2e] text-white overflow-hidden py-2 border-b border-white/10 shadow-sm"
+    >
       <div 
         className="relative flex w-max animate-marquee whitespace-nowrap font-medium text-sm md:text-base tracking-wide"
         style={{ animationDuration: '80s' }}

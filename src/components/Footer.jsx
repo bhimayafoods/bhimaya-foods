@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function Footer() {
   return (
-    <footer id="contact" className="bg-primary text-white py-16">
+    <footer id="contact" className="bg-primary text-white py-10">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-10 text-center md:text-left">
         {/* LEFT */}
         <div className="md:justify-self-start">
@@ -24,7 +24,6 @@ function Footer() {
         {/* RIGHT */}
         <div className="md:justify-self-end">
           <h4 className="font-semibold mb-4">Legal Policies</h4>
-          <Link to="/about-us" className="block hover:text-secondary">About Us</Link> 
           <Link to="/contact-us" className="block hover:text-secondary">Contact Us</Link> 
           <Link to="/privacy-policy" className="block hover:text-secondary">Privacy Policy</Link>
           <Link to="/terms-conditions" className="block hover:text-secondary">Terms & Conditions</Link>

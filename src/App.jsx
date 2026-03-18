@@ -12,6 +12,7 @@ import Cart from "./components/Cart";
 import Loader from "./components/Loader";
 import Offline from "./components/Offline";
 import Maintenance from "./components/Maintenance";
+import TopNotice from "./components/TopNotice";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
@@ -485,24 +486,30 @@ function App() {
   }
   const isAdmin = user?.email === "bhimayafoods@gmail.com" || user?.email === "ssaiprasanth333@gmail.com";
 
-  return (
-    <div className={isAdmin ? "selection-enabled" : ""}>
-      <Navbar
-        cartCount={cart.length}
-        openCart={() => setIsCartOpen(true)}
-        hasBanner={storeSettings && storeSettings.isOpen === false && !!storeSettings.closedMessage}
-        hideLinks={['/cart', '/checkout'].includes(location.pathname)}
-      />
-      {storeSettings && storeSettings.isOpen === false && storeSettings.closedMessage && (
-        <div id="store-closed-banner" className="bg-red-600 text-white text-center py-2 px-4 font-bold text-sm md:text-base w-full fixed top-0 left-0 z-[60]">
-          🚨 {storeSettings.closedMessage}
-        </div>
-      )}
+   const isStoreClosed = storeSettings && storeSettings.isOpen === false && !!storeSettings.closedMessage;
+   const showTopNotice = !!(storeSettings?.showTopInfo && storeSettings?.topInfoMessage);
+
+   return (
+     <div className={isAdmin ? "selection-enabled" : ""}>
+       <TopNotice 
+         message={storeSettings?.topInfoMessage} 
+         isVisible={storeSettings?.showTopInfo} 
+       />
+       {isStoreClosed && (
+         <div id="store-closed-banner" className="bg-red-600 text-white text-center py-2 px-4 font-bold text-sm md:text-base w-full relative z-[60]">
+           🚨 {storeSettings.closedMessage}
+         </div>
+       )}
+       <Navbar
+         cartCount={cart.length}
+         openCart={() => setIsCartOpen(true)}
+         hideLinks={['/cart', '/checkout'].includes(location.pathname)}
+       />
       <Routes>
         <Route path="/" element={
           <>
             <Hero />
-            <TopRibbon />
+             <TopRibbon />
             <Products
               products={products}
               cart={cart}

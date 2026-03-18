@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-function Navbar({ cartCount, openCart, hasBanner, hideLinks }) {
+function Navbar({ cartCount, openCart, hideLinks }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -16,10 +16,10 @@ function Navbar({ cartCount, openCart, hasBanner, hideLinks }) {
 
   return (
     <header
-      className={`fixed w-full z-50 transition-all duration-300 ${scrolled
+      className={`sticky top-0 w-full z-50 transition-all duration-300 ${scrolled
           ? "bg-background shadow-md"
           : "bg-background/90"
-        } ${hasBanner ? "top-[40px] md:top-[44px]" : "top-0"}`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center h-16 md:h-20">
 

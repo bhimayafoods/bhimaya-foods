@@ -43,9 +43,9 @@ function Navbar({ cartCount, openCart, hasBanner, hideLinks }) {
             <a href="/#products" className="hover:text-secondary transition">
               Our Products
             </a>
-            <Link to="/about-us" className="hover:text-secondary transition">
+            <a href="/#about" className="hover:text-secondary transition">
               Our Story
-            </Link>
+            </a>
             <Link to="/contact-us" className="hover:text-secondary transition">
               Contact
             </Link>

@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Jammu and Kashmir", 
+];
+
 const CheckoutPage = ({
   cart,
   total,
@@ -12,11 +20,13 @@ const CheckoutPage = ({
   customerDetails,
   setCustomerDetails,
   pincodeLoading,
+  pincodeStatus,
   validStateForPincode,
   codLimit,
   COD_FEE,
   step,
-  setStep
+  setStep,
+  isStoreOpen
 }) => {
   const navigate = useNavigate();
 
@@ -41,6 +51,16 @@ const CheckoutPage = ({
 
   const handleNext = (e) => {
     if (e) e.preventDefault();
+    
+    if (step === 1) {
+      const { pincode } = customerDetails;
+      if (pincode.length !== 6) {
+        return alert("Please enter a valid 6-digit pincode.");
+      }
+      
+      // Removed all blocking pincode/state validation alerts
+    }
+
     if (step < 3) setStep(step + 1);
   };
 
@@ -70,17 +90,14 @@ const CheckoutPage = ({
               <div 
                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300 ${
                   step > s.id ? 'bg-blue-600 text-white' : 
-                  step === s.id ? 'bg-blue-600 text-white border-4 border-blue-100' : 
-                  'bg-white border-2 border-gray-300 text-gray-500'
+                  step === s.id ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-200 text-gray-500'
                 }`}
               >
                 {step > s.id ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                 ) : s.id}
               </div>
-              <span className={`mt-2 text-xs md:text-sm font-medium ${step === s.id ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
+              <span className={`mt-2 text-[10px] md:text-xs font-bold uppercase transition-colors duration-300 ${step >= s.id ? 'text-blue-600' : 'text-gray-400'}`}>
                 {s.name}
               </span>
             </div>
@@ -91,14 +108,12 @@ const CheckoutPage = ({
   );
 
   return (
-    <div className="pt-16 md:pt-20 pb-16 min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 pb-20 mt-16 md:mt-20 flex flex-col">
       <ProgressBar />
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 flex-1 w-full">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          
-          {/* CONTENT AREA */}
-          <div className="w-full lg:w-[68%] space-y-4">
+      
+      <div className="max-w-6xl mx-auto px-4 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-8">
             
             {/* STEP 1: ADDRESS */}
             {step === 1 && (
@@ -160,11 +175,6 @@ const CheckoutPage = ({
                           placeholder="6-digit"
                           className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition"
                         />
-                        {pincodeLoading && (
-                          <div className="absolute right-3 top-3.5">
-                             <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div>
@@ -175,19 +185,27 @@ const CheckoutPage = ({
                         name="city"
                         value={customerDetails.city}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-600 bg-gray-50"
+                        className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800 bg-white"
                       />
                     </div>
                     <div>
                       <label className="block text-gray-700 text-sm font-bold mb-2">State</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         name="state"
                         value={customerDetails.state}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-600 bg-gray-50"
-                      />
+                        className={`w-full p-3 border rounded outline-none transition text-gray-800 bg-white ${
+                          validStateForPincode && customerDetails.state.trim().toLowerCase() !== validStateForPincode.toLowerCase() 
+                            ? 'border-red-500 bg-red-50' 
+                            : 'border-gray-300 focus:ring-2 focus:ring-blue-500'
+                        }`}
+                      >
+                        <option value="">Select State</option>
+                        {INDIAN_STATES.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -305,113 +323,118 @@ const CheckoutPage = ({
           </div>
 
           {/* RIGHT COLUMN: PRICE DETAILS */}
-          <div className="w-full lg:w-[32%] sticky top-36">
-             <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="lg:col-span-4 sticky top-36">
+             <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden text-[#000]">
                 <div className="p-4 border-b">
-                   <h3 className="text-gray-500 font-bold uppercase text-sm tracking-wide">Price Details</h3>
+                   <h3 className="text-gray-500 font-bold uppercase text-[12px] tracking-[0.1em]">PRICE DETAILS</h3>
                 </div>
                 
-                <div className="p-4 space-y-4 text-gray-800">
-                  <div className="flex justify-between">
-                    <span>Price ({cart.length} {cart.length === 1 ? 'item' : 'items'})</span>
-                    <span className="font-medium font-mono tracking-tighter">₹{total}</span>
+                <div className="p-5 space-y-6">
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center text-[15px]">
+                       <span className="text-gray-800">Price</span>
+                       <span className="text-gray-900 font-medium">₹{total}</span>
+                    </div>
+                    <span className="text-[12px] text-gray-500">({cart.length} item{cart.length > 1 ? 's' : ''})</span>
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <span>Delivery Charges</span>
-                    <span className={delivery === 0 ? "text-green-600 font-bold" : "font-mono tracking-tighter"}>
-                      {delivery === 0 ? "FREE" : `₹${delivery}`}
+                  <div className="flex justify-between items-center text-[15px]">
+                    <span className="text-gray-800">Delivery Charges</span>
+                    <span className={delivery === 0 ? "text-green-600 font-bold uppercase" : "text-gray-900 font-medium"}>
+                       {delivery === 0 ? "FREE" : `₹${delivery}`}
                     </span>
                   </div>
 
-
-
                   {codFee > 0 && total <= codLimit && (
-                    <div className="flex justify-between items-center animate-fadeIn text-orange-700 font-medium pt-1">
-                      <span className="flex items-center gap-1.5">
+                    <div className="flex justify-between items-center text-[15px]">
+                      <span className="text-orange-700 font-medium flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                         Platform Fee (COD)
                       </span>
-                      <span className="font-mono tracking-tighter">₹{codFee}</span>
+                      <span className="font-medium text-gray-900">₹{codFee}</span>
                     </div>
                   )}
                   
-                  <div className="flex justify-between items-center border-t border-dashed pt-4 font-bold text-lg text-gray-900 mt-2">
-                    <span>Total Amount</span>
-                    <span className="font-mono tracking-tighter">₹{finalTotal}</span>
+                  <div className="flex justify-between items-center border-t border-dashed pt-5 font-bold text-lg text-[#000] mt-2">
+                    <span className="text-[17px]">Total Amount</span>
+                    <span className="text-[17px]">₹{finalTotal}</span>
                   </div>
                 </div>
                 
-                <div className="p-4 border-t border-dashed bg-green-50/50">
-                   <p className="text-green-700 font-bold text-sm flex items-center gap-2 ">
-                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                     </svg>
-                     100% Secure Checkout
+                <div className="p-4 border-t border-dashed bg-green-50/20">
+                   <p className="text-green-700 font-bold text-[11px] flex items-center gap-2 uppercase tracking-wide">
+                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                     100% SECURE CHECKOUT
                    </p>
                 </div>
              </div>
 
-             {/* COD LIMIT WARNING (Hide on Step 3 as requested) */}
-             {total > codLimit && step !== 3 && (
-                <div className="text-red-600 text-[10px] md:text-[11px] font-bold mb-4 bg-red-50 p-2.5 rounded border border-red-100 animate-fadeIn leading-relaxed shadow-sm mb-[20px]">
-                   ⚠️ Cash on Delivery (COD) is not available for orders above ₹{codLimit}. Please use Online Payment.
+             {/* COD LIMIT WARNING - Visibile on all steps if exceeded */}
+             {total > codLimit && (
+                <div className="mt-4 text-red-600 text-[11px] font-bold bg-red-50 p-3.5 rounded border border-red-100 animate-fadeIn flex items-start gap-2 shadow-sm leading-relaxed">
+                   <span>⚠️</span>
+                   <span>Cash on Delivery (COD) is not available for orders above ₹{codLimit}. Please use Online Payment.</span>
                 </div>
              )}
 
-             {/* CTA BUTTONS (Shared for mobile and desktop) */}
-             <div className="flex flex-col gap-3 mb-6">
+             {/* CTA BUTTONS */}
+             <div className="flex flex-col gap-3 mt-6">
                 {step === 1 && (
                   <button 
                     onClick={() => {
-                        // Trigger the form submit if it's step 1
                         const form = document.querySelector('form');
                         if (form) form.requestSubmit();
                     }}
-                    className="w-full bg-[#fb641b] text-white py-4 rounded font-bold uppercase shadow-lg hover:shadow-xl transition active:scale-95"
+                    className="w-full bg-[#fb641b] text-white py-4 rounded font-extrabold uppercase shadow-sm hover:brightness-95 transition active:scale-[0.98] tracking-widest text-[14px]"
                   >
-                    Save and Continue
+                    SAVE AND CONTINUE
                   </button>
                 )}
                 {step === 2 && (
                   <button 
                     onClick={handleNext}
-                    className="w-full bg-[#fb641b] text-white py-4 rounded font-bold uppercase shadow-lg hover:shadow-xl transition active:scale-95"
+                    className="w-full bg-[#fb641b] text-white py-4 rounded font-extrabold uppercase shadow-sm hover:brightness-95 transition active:scale-[0.98] tracking-widest text-[14px]"
                   >
-                    Continue
+                    CONTINUE TO PAYMENT
                   </button>
                 )}
                 {step === 3 && (
-                  <div className="flex flex-col gap-3 mt-[20px]">
-                    <button 
-                      onClick={handleBack}
-                      className="w-full text-gray-500 font-bold uppercase py-2 hover:bg-gray-50 transition rounded text-sm"
-                    >
-                      Back to Summary
-                    </button>
-                    <button 
-                      onClick={processOrder}
-                      disabled={isProcessingOrder}
-                      className={`w-full ${isProcessingOrder ? 'bg-gray-400' : 'bg-[#fb641b] hover:bg-[#e65a16]'} text-white py-4 rounded font-bold uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2`}
-                    >
-                      {isProcessingOrder ? (
-                         <>
-                           <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                           <span>Processing...</span>
-                         </>
-                      ) : (
-                        'Confirm & Place Order'
-                      )}
-                    </button>
-                  </div>
+                  <button 
+                     onClick={() => isStoreOpen && processOrder()}
+                     disabled={isProcessingOrder || !isStoreOpen}
+                     className={`w-full ${isProcessingOrder || !isStoreOpen ? 'bg-gray-400' : 'bg-[#fb641b] hover:brightness-95'} text-white py-4 rounded font-extrabold uppercase shadow-sm transition active:scale-[0.98] flex items-center justify-center gap-2 tracking-widest text-[14px]`}
+                  >
+                    {isProcessingOrder ? (
+                       <>
+                         <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                         <span>PLACING ORDER...</span>
+                       </>
+                    ) : !isStoreOpen ? (
+                      'STORE CLOSED'
+                    ) : (
+                      'CONFIRM & PLACE ORDER'
+                    )}
+                  </button>
+                )}
+
+                {step > 1 && (
+                  <button 
+                    onClick={handleBack}
+                    className="w-full bg-white text-gray-500 py-3 rounded font-bold border border-gray-200 hover:bg-gray-50 transition uppercase text-[11px] tracking-wider"
+                  >
+                    Go Back
+                  </button>
                 )}
              </div>
 
-             <div className="flex items-start gap-3 text-gray-500 text-[10px] md:text-xs font-bold uppercase mt-4 px-1 opacity-70">
-                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14.5l-3.5-3.5 1.41-1.41L11 13.09l4.59-4.59L17 9.91l-6 6z" />
-                </svg>
-                <p className="leading-tight">Safe and Secure Payments. 100% Authentic products.</p>
+             <div className="flex flex-col items-center gap-1.5 text-gray-400 text-[10px] font-bold uppercase mt-6 opacity-70 text-center tracking-tighter">
+                <p className="flex items-center gap-1.5 justify-center">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  </svg>
+                  SAFE AND SECURE PAYMENTS.
+                </p>
+                <p>100% AUTHENTIC PRODUCTS.</p>
              </div>
           </div>
 

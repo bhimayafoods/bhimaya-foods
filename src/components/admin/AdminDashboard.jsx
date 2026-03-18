@@ -227,11 +227,11 @@ const AdminDashboard = () => {
                 }
             });
 
-            console.log("DEBUG - Pickup Location Response Status:", response.status);
+
 
             // Fallback to 'locations' endpoint if 'pickup' returns 404
             if (response.status === 404) {
-                console.log("DEBUG - settings/company/pickup returned 404, trying settings/get/pickup...");
+
                 response = await fetch('/api/shiprocket/settings/get/pickup', {
                     method: 'GET',
                     headers: { 

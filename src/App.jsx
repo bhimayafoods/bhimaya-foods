@@ -64,6 +64,7 @@ function App() {
 
   const [validStateForPincode, setValidStateForPincode] = useState("");
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState(""); // "", "loading", "success", "error", "not_found"
   const [settingsLoading, setSettingsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,6 +105,10 @@ function App() {
       product.quantity?.toLowerCase().includes('out of stock') ||
       product.description?.toLowerCase().includes('out of stock') ||
       product.quantity === '0';
+
+    if (storeSettings?.isOpen === false) {
+      return alert(storeSettings.closedMessage || "Sorry, we are currently closed and not accepting orders.");
+    }
 
     if (isOutOfStock) return alert("Sorry, this item is out of stock.");
 
@@ -166,12 +171,12 @@ function App() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const DELIVERY_CHARGE = 50;
-  const FREE_LIMIT = storeSettings?.freeDeliveryLimit || 499;
+  const FREE_LIMIT = storeSettings?.freeDeliveryLimit || 999;
   const COD_FEE = 9;
 
   const delivery = total >= FREE_LIMIT ? 0 : DELIVERY_CHARGE;
   const isCheckoutPage = location.pathname === '/checkout';
-  const codLimit = storeSettings?.codLimit || 1000;
+  const codLimit = storeSettings?.codLimit || 299;
   const codFee = (isCheckoutPage && checkoutStep === 3 && customerDetails.paymentMethod === 'whatsapp' && total <= codLimit) ? COD_FEE : 0;
   const finalTotal = total + delivery + codFee;
 
@@ -181,38 +186,54 @@ function App() {
 
   // Auto-fill City/State based on Pincode
   useEffect(() => {
+    let isCancelled = false;
     const lookupPincode = async () => {
-      if (customerDetails.pincode.length === 6) {
-        setPincodeLoading(true);
-        try {
-          const response = await fetch(`https://api.postalpincode.in/pincode/${customerDetails.pincode}`);
-          const data = await response.json();
-
-          if (data[0].Status === "Success") {
-            const info = data[0].PostOffice[0];
-            const apiState = info.State;
-            const apiCity = info.Block || info.District;
-            
-            setCustomerDetails(prev => ({
-              ...prev,
-              city: prev.city || apiCity,
-              state: apiState
-            }));
-            setValidStateForPincode(apiState);
-          } else {
-            setValidStateForPincode("");
-          }
-        } catch (error) {
-          console.error("Pincode lookup failed:", error);
-          setValidStateForPincode("");
-        } finally {
-          setPincodeLoading(false);
-        }
-      } else {
+      const pin = customerDetails.pincode;
+      
+      if (pin.length !== 6) {
         setValidStateForPincode("");
+        setPincodeStatus("");
+        return;
+      }
+
+      setPincodeLoading(true);
+      setPincodeStatus("loading");
+      
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+        if (!response.ok) throw new Error("Network Response Fail");
+        const data = await response.json();
+
+        if (isCancelled) return;
+
+        if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
+          const info = data[0].PostOffice[0];
+          const apiState = info.State;
+          const apiCity = info.Block || info.District;
+          
+          setCustomerDetails(prev => ({
+            ...prev,
+            city: prev.city || apiCity,
+            state: prev.state || apiState
+          }));
+          setValidStateForPincode(apiState);
+          setPincodeStatus("success");
+        } else {
+          setValidStateForPincode("");
+          setPincodeStatus("not_found");
+        }
+      } catch (error) {
+        if (isCancelled) return;
+        console.error("Pincode lookup failed:", error);
+        setValidStateForPincode("");
+        setPincodeStatus("error");
+      } finally {
+        if (!isCancelled) setPincodeLoading(false);
       }
     };
+
     lookupPincode();
+    return () => { isCancelled = true; };
   }, [customerDetails.pincode]);
 
   const generateOrderID = () => {
@@ -223,15 +244,19 @@ function App() {
   const processOrder = async (e) => {
     if (e) e.preventDefault();
     
+    if (storeSettings?.isOpen === false) {
+      return alert(storeSettings.closedMessage || "Sorry, we are currently closed and not accepting orders.");
+    }
+    
     const { name, phone, address, city, state, pincode, paymentMethod } = customerDetails;
 
     if (!name.trim() || !phone.trim() || !address.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
       return alert("Please fill in all details including City, State, and Pincode.");
     }
 
-    // Pincode and State validation
-    if (pincode.length === 6 && validStateForPincode && state !== validStateForPincode) {
-      return alert(`The entered pincode (${pincode}) is for ${validStateForPincode}, but you have selected ${state}. Please correct it to proceed.`);
+    // Pincode and State validation (Non-blocking)
+    if (pincode.length !== 6) {
+      return alert("Please enter a valid 6-digit pincode.");
     }
 
     // Snapshot cart and form values before any async/state operations
@@ -484,6 +509,7 @@ function App() {
               addToCart={addToCart}
               increaseQuantity={increaseQuantity}
               decreaseQuantity={decreaseQuantity}
+              isStoreOpen={storeSettings?.isOpen !== false}
             />
             <Ribbon />
             <About />
@@ -506,6 +532,7 @@ function App() {
             decreaseQuantity={decreaseQuantity}
             removeFromCart={removeFromCart}
             checkout={() => navigate('/checkout')}
+            isStoreOpen={storeSettings?.isOpen !== false}
           />
         } />
         <Route path="/checkout" element={
@@ -520,11 +547,13 @@ function App() {
             customerDetails={customerDetails}
             setCustomerDetails={setCustomerDetails}
             pincodeLoading={pincodeLoading}
+            pincodeStatus={pincodeStatus}
             validStateForPincode={validStateForPincode}
             codLimit={codLimit}
             COD_FEE={9}
             step={checkoutStep}
             setStep={setCheckoutStep}
+            isStoreOpen={storeSettings?.isOpen !== false}
           />
         } />
       </Routes>

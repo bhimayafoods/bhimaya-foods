@@ -11,7 +11,8 @@ const CartPage = ({
   increaseQuantity,
   decreaseQuantity,
   removeFromCart,
-  checkout
+  checkout,
+  isStoreOpen
 }) => {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -162,10 +163,11 @@ const CartPage = ({
              {/* Desktop Place Order Button Area */}
              <div className="hidden md:block bg-white p-4 rounded shadow-sm border border-gray-200">
                 <button 
-                   onClick={checkout}
-                   className="w-full bg-[#fb641b] text-white py-3 rounded font-bold uppercase shadow-lg hover:shadow-xl transition active:scale-95"
+                   onClick={() => isStoreOpen && checkout()}
+                   disabled={!isStoreOpen}
+                   className={`w-full py-3 rounded font-bold uppercase shadow-lg transition active:scale-95 ${!isStoreOpen ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#fb641b] text-white hover:shadow-xl'}`}
                 >
-                   Place Order
+                   {!isStoreOpen ? 'Store Closed' : 'Place Order'}
                 </button>
              </div>
              {/* Bottom Sticky CTA (Mobile Only) */}
@@ -174,10 +176,11 @@ const CartPage = ({
                     <p className="text-lg font-bold">₹{finalTotal}</p>
                   </div>
                   <button 
-                    onClick={checkout}
-                    className="bg-[#fb641b] text-white px-8 py-3 rounded font-bold uppercase shadow-lg active:scale-95"
+                    onClick={() => isStoreOpen && checkout()}
+                    disabled={!isStoreOpen}
+                    className={`px-8 py-3 rounded font-bold uppercase shadow-lg active:scale-95 ${!isStoreOpen ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#fb641b] text-white'}`}
                   >
-                    Place Order
+                    {!isStoreOpen ? 'Closed' : 'Place Order'}
                   </button>
               </div>
              <div className="flex items-start gap-3 text-gray-500 text-xs font-bold uppercase mt-2 px-1">

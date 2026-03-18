@@ -6,6 +6,7 @@ function Products({
   addToCart,
   increaseQuantity,
   decreaseQuantity,
+  isStoreOpen,
 }) {
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +97,7 @@ function Products({
               addToCart={addToCart}
               increaseQuantity={increaseQuantity}
               decreaseQuantity={decreaseQuantity}
+              isStoreOpen={isStoreOpen}
             />
           ))}
         </div>
@@ -149,6 +151,7 @@ function ProductCard({
   addToCart,
   increaseQuantity,
   decreaseQuantity,
+  isStoreOpen,
 }) {
   const availableWeightsList = product.availableWeights || ['1000gm'];
   const [selectedWeight, setSelectedWeight] = useState(() => {
@@ -241,14 +244,16 @@ function ProductCard({
               </div>
             ) : (
               <button
-                onClick={() => !isOutOfStock && addToCart(product, selectedWeight, currentPrice)}
-                disabled={isOutOfStock}
+                onClick={() => isStoreOpen && !isOutOfStock && addToCart(product, selectedWeight, currentPrice)}
+                disabled={isOutOfStock || !isStoreOpen}
                 className={`px-6 py-2 rounded-full font-bold transition-all duration-300 ${isOutOfStock
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-400"
-                  : "bg-primary text-white hover:bg-orange-700 shadow-md hover:shadow-lg active:scale-95"
+                  : !isStoreOpen
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-400"
+                    : "bg-primary text-white hover:bg-orange-700 shadow-md hover:shadow-lg active:scale-95"
                   }`}
               >
-                {isOutOfStock ? "Out of Stock" : "Add"}
+                {isOutOfStock ? "Out of Stock" : !isStoreOpen ? "Closed" : "Add"}
               </button>
             )}
           </div>

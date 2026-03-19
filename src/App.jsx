@@ -519,6 +519,20 @@ function App() {
          openCart={() => setIsCartOpen(true)}
          hideLinks={['/cart', '/checkout'].includes(location.pathname)}
        />
+       <Cart
+         cart={cart}
+         products={products}
+         total={total}
+         isOpen={isCartOpen}
+         closeCart={() => setIsCartOpen(false)}
+         increaseQuantity={increaseQuantity}
+         decreaseQuantity={decreaseQuantity}
+         checkout={() => {
+           setIsCartOpen(false);
+           navigate('/checkout');
+         }}
+         freeDeliveryLimit={storeSettings?.freeDeliveryLimit}
+       />
       <Routes>
         <Route path="/" element={
           <>

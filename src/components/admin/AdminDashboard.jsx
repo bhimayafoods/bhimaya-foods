@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { signOut } from 'firebase/auth';
 import { PRODUCTS } from '../../data/products';
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
 
     // Visual-only refreshing state for the ↻ button spin animation
     const [isRefreshing, setIsRefreshing] = useState({});
-    const [shakeTokenInput, setShakeTokenInput] = useState(false);
+    const [, setShakeTokenInput] = useState(false); // shakeTokenInput unused
     const shiprocketTokenRef = useRef(null);
 
     const triggerRefresh = (key, fetchFn) => {
@@ -439,6 +439,7 @@ const AdminDashboard = () => {
         }
     };
 
+    // eslint-disable-next-line no-unused-vars
     const handleRestoreDefaults = async () => {
         if (!window.confirm("This will restore the default 12 starter products (Rice, Flours, Snacks) to your database. Existing products will NOT be deleted, but duplicates might be created if they have the same name. Proceed?")) return;
 
@@ -449,6 +450,7 @@ const AdminDashboard = () => {
                 // Check if product already exists to avoid exact duplicates
                 const exists = products.some(p => p.name === product.name);
                 if (!exists) {
+                    // eslint-disable-next-line no-unused-vars
                     const { id, ...productData } = product; // Remove local id
                     await addDoc(collection(db, "products"), {
                         ...productData,
@@ -474,16 +476,12 @@ const AdminDashboard = () => {
 
         try {
             const finalUpdate = {};
-            let statusChanged = false;
-            let paymentChanged = false;
 
             if (update.status && update.status !== order.status) {
                 finalUpdate.status = update.status;
-                statusChanged = true;
             }
             if (update.paymentStatus && update.paymentStatus !== order.paymentStatus) {
                 finalUpdate.paymentStatus = update.paymentStatus;
-                paymentChanged = true;
             }
             if (update.utrNumber !== undefined && update.utrNumber.trim() !== (order.utrNumber || '')) {
                 finalUpdate.utrNumber = update.utrNumber.trim();
@@ -518,7 +516,7 @@ const AdminDashboard = () => {
             const waUrl = `https://wa.me/91${order.customerPhone}?text=${encodedMessage}`;
             
             // Pre-open strategy for WhatsApp as well to be safe
-            const waWindow = window.open(waUrl, "_blank");
+            window.open(waUrl, "_blank");
 
             // Clear pending update (onSnapshot will auto-refresh orders)
             setPendingUpdates(prev => {
@@ -578,7 +576,7 @@ const AdminDashboard = () => {
 
         const rows = [];
         ordersList.filter(o => o.status === 'Processing' || o.status === 'Packed' || o.status === 'Pending').forEach(order => {
-            order.items?.forEach((item, idx) => {
+            order.items?.forEach((item) => {
                 rows.push([
                     order.orderID || order.id,
                     order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : '',
@@ -629,6 +627,7 @@ const AdminDashboard = () => {
         if (shiprocketToken && pickupLocations.length === 0) {
             fetchPickupLocations();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shiprocketToken]);
 
     useEffect(() => {
@@ -642,6 +641,7 @@ const AdminDashboard = () => {
             if (customersUnsubRef.current) customersUnsubRef.current();
             if (categoriesUnsubRef.current) categoriesUnsubRef.current();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleLogout = async () => {

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-function Navbar({ cartCount, openCart, hideLinks }) {
+function Navbar({ cartCount, hideLinks }) {
 
   return (
     <header

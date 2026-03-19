@@ -48,10 +48,10 @@ const Login = () => {
             };
 
             await emailjs.send(
-                'service_qwdsdli',
-                'template_ws3rv3h',
+                import.meta.env.VITE_EMAILJS_SERVICE_ID,
+                import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
                 templateParams,
-                '5LEFcXjQwYbESiDow'
+                import.meta.env.VITE_EMAILJS_PUBLIC_KEY
             );
 
             setMessage('Verification code sent to your email.');

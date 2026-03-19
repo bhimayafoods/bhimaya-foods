@@ -7,7 +7,7 @@ const CartPage = ({
   total,
   delivery,
   finalTotal,
-  freeDeliveryLimit,
+  // freeDeliveryLimit unused
   increaseQuantity,
   decreaseQuantity,
   removeFromCart,

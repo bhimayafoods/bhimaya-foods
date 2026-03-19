@@ -23,7 +23,8 @@ function Cart({
     );
   };
 
-  const hasOutOfStockItem = Array.isArray(cart) && cart.some(item => isItemOutOfStock(item));
+  // hasOutOfStockItem unused but kept for parity if needed
+  // const hasOutOfStockItem = Array.isArray(cart) && cart.some(item => isItemOutOfStock(item));
 
   // ✅ Correct Delivery Logic
   const delivery =

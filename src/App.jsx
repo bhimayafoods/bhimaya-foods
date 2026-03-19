@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, addDoc, setDoc, updateDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import TopRibbon from "./components/TopRibbon";
 import Navbar from "./components/Navbar";
@@ -28,11 +28,7 @@ import { safeLocalStorageSet, safeSessionStorageSet } from "./utils/storage";
 
 function App() {
   // Skip loader if we already have cached products from this session
-  const [loading, setLoading] = useState(() => {
-    try {
-      return !sessionStorage.getItem('bhimaya_products');
-    } catch { return true; }
-  });
+  const [loading, setLoading] = useState(true);
   const [storeSettings, setStoreSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('bhimaya_settings');
@@ -47,16 +43,9 @@ function App() {
       return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
     } catch { return []; }
   });
-  const [products, setProducts] = useState(() => {
-    try {
-      const cached = sessionStorage.getItem('bhimaya_products');
-      if (!cached) return [];
-      const parsed = JSON.parse(cached);
-      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-    } catch { return []; }
-  });
+  const [products, setProducts] = useState([]);
   const [user, setUser] = useState(null);
-  const [userLoading, setUserLoading] = useState(true);
+  const [, setUserLoading] = useState(true); // userLoading unused
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -76,7 +65,7 @@ function App() {
   const [validStateForPincode, setValidStateForPincode] = useState("");
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeStatus, setPincodeStatus] = useState(""); // "", "loading", "success", "error", "not_found"
-  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [, setSettingsLoading] = useState(true); // settingsLoading unused
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,9 +90,9 @@ function App() {
           if (isNaN(livePrice)) return item;
           
           const currentPrice = Math.round(livePrice * factor);
-          if (item.price !== currentPrice) {
+          if (item.price !== currentPrice || item.image !== liveProduct.image || item.name !== liveProduct.name) {
             changed = true;
-            return { ...item, price: currentPrice };
+            return { ...item, price: currentPrice, image: liveProduct.image, name: liveProduct.name };
           }
         }
         return item;
@@ -113,9 +102,10 @@ function App() {
         setCart(updatedCart);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products]);
 
-  const addToCart = (product, weight = "1000gm", price) => {
+  const addToCart = (product, weight = "1000gm") => {
     const isOutOfStock =
       product.quantity?.toLowerCase().includes('out of stock') ||
       product.description?.toLowerCase().includes('out of stock') ||
@@ -452,8 +442,6 @@ function App() {
           ...doc.data()
         }));
         setProducts(productsList);
-        // Cache products so the next page refresh shows them instantly
-        safeSessionStorageSet('bhimaya_products', productsList);
         setLoading(false);
       },
       (error) => {
@@ -513,7 +501,7 @@ function App() {
   const isAdmin = user?.email === "bhimayafoods@gmail.com" || user?.email === "ssaiprasanth333@gmail.com";
 
    const isStoreClosed = storeSettings && storeSettings.isOpen === false && !!storeSettings.closedMessage;
-   const showTopNotice = !!(storeSettings?.showTopInfo && storeSettings?.topInfoMessage);
+   // showTopNotice removed because it was unused
 
    return (
      <div className={isAdmin ? "selection-enabled" : ""}>

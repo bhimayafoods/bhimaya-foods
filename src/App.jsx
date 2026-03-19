@@ -131,8 +131,7 @@ function App() {
     } else {
       setCart([...cart, { ...product, cartItemId, weight, price: itemPrice, quantity: 1 }]);
     }
-
-    setIsCartOpen(true);
+    // We intentionally do not open the cart here to allow uninterrupted shopping
   };
 
   const increaseQuantity = (cartItemId) => {

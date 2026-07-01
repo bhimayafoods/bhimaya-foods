@@ -24,6 +24,8 @@ import RefundPolicy from "./pages/RefundPolicy";
 import ContactUs from "./pages/ContactUs";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import SuccessPage from "./pages/SuccessPage";
+import TrackOrderPage from "./pages/TrackOrderPage";
 import { safeLocalStorageSet, safeSessionStorageSet } from "./utils/storage";
 
 function App() {
@@ -347,8 +349,8 @@ function App() {
               // Step 4: Save Order to Firebase
               await saveOrderToFirebase({ orderID, nameSnapshot, phoneSnapshot, addressSnapshot, citySnapshot, stateSnapshot, pincodeSnapshot, cartSnapshot, paymentMethod, paymentStatus: 'Successful', transactionId: response.razorpay_payment_id });
               
-              // Redirect to WhatsApp
-              window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, "_blank");
+              // Redirect to Success Page
+              navigate(`/success/${orderID}`);
               
               clearCartAndReset();
             } catch (err) {
@@ -370,7 +372,7 @@ function App() {
       } else {
         // WhatsApp / COD Flow
         await saveOrderToFirebase({ orderID, nameSnapshot, phoneSnapshot, addressSnapshot, citySnapshot, stateSnapshot, pincodeSnapshot, cartSnapshot, paymentMethod, paymentStatus: 'Pending', transactionId: null });
-        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, "_blank");
+        navigate(`/success/${orderID}`);
         clearCartAndReset();
         setIsProcessingOrder(false);
       }
@@ -643,6 +645,8 @@ function App() {
             isStoreOpen={storeSettings?.isOpen !== false}
           />
         } />
+        <Route path="/success/:orderId" element={<SuccessPage />} />
+        <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!['/cart', '/checkout'].includes(location.pathname) && <Footer />}

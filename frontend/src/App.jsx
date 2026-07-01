@@ -304,7 +304,7 @@ function App() {
     try {
       if (paymentMethod === 'online') {
         // Step 1: Create Order on Backend
-        const orderResponse = await fetch("/api/createOrder", {
+        const orderResponse = await fetch("https://bhimaya-foods.onrender.com/api/createOrder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: finalTotal, receipt: orderID }),
@@ -332,7 +332,7 @@ function App() {
             try {
               setIsProcessingOrder(true);
               // Step 3: Verify Signature on Backend
-              const verifyRes = await fetch("/api/verifyPayment", {
+              const verifyRes = await fetch("https://bhimaya-foods.onrender.com/api/verifyPayment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

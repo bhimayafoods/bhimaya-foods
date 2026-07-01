@@ -10,6 +10,14 @@ export default defineConfig({
         target: 'https://apiv2.shiprocket.in/v1/external',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/shiprocket/, '')
+      },
+      '/api/createOrder': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      },
+      '/api/verifyPayment': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
       }
     }
   }

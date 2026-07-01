@@ -263,12 +263,10 @@ function App() {
       return alert("Please fill in all details including City, State, and Pincode.");
     }
 
-    // Pincode and State validation (Non-blocking)
     if (pincode.length !== 6) {
       return alert("Please enter a valid 6-digit pincode.");
     }
 
-    // Snapshot cart and form values before any async/state operations
     const cartSnapshot = [...cart];
     const nameSnapshot = name.trim();
     const phoneSnapshot = phone.trim();
@@ -278,13 +276,12 @@ function App() {
     const pincodeSnapshot = pincode.trim();
     const orderID = generateOrderID();
 
-    // Construct the WhatsApp message
     let messageText = `*Order ID: ${orderID}*\n\n`;
     messageText += `*Order from Bhimaya Foods*\n`;
     messageText += `*Customer:* ${nameSnapshot}\n`;
     messageText += `*Phone:* ${phoneSnapshot}\n`;
     messageText += `*Address:* ${addressSnapshot}, ${citySnapshot}, ${stateSnapshot} - ${pincodeSnapshot}\n`;
-    messageText += `*Payment Method:* ${paymentMethod === 'whatsapp' ? 'COD (Manual Pay)' : 'Online'}\n\n`;
+    messageText += `*Payment Method:* ${paymentMethod === 'whatsapp' ? 'COD (Manual Pay)' : 'Online Paid'}\n\n`;
     cartSnapshot.forEach(item => {
       const weightLabel = item.weight ? ` (${item.weight})` : "";
       messageText += `• ${item.name}${weightLabel} (x${item.quantity}) - ₹${item.price * item.quantity}\n`;
@@ -295,19 +292,97 @@ function App() {
     } else {
       messageText += `\n*Free Delivery !*`;
     }
-    
     if (codFee > 0) {
       messageText += `\n*Platform Fee (COD): ₹${codFee}*`;
     }
-    
     messageText += `\n*Total: ₹${finalTotal}*`;
 
     const encodedMessage = encodeURIComponent(messageText);
 
     setIsProcessingOrder(true);
     
-    // Save customer and order to Firestore
     try {
+      if (paymentMethod === 'online') {
+        // Step 1: Create Order on Backend
+        const orderResponse = await fetch("/api/createOrder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: finalTotal, receipt: orderID }),
+        });
+        
+        if (!orderResponse.ok) throw new Error("Failed to initialize payment");
+        const orderDataResult = await orderResponse.json();
+
+        // Step 2: Open Razorpay Checkout
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: orderDataResult.amount,
+          currency: orderDataResult.currency,
+          name: "Bhimaya Foods",
+          description: "Order Payment",
+          order_id: orderDataResult.id,
+          prefill: {
+            name: nameSnapshot,
+            contact: phoneSnapshot,
+          },
+          theme: {
+            color: "#fb641b",
+          },
+          handler: async function (response) {
+            try {
+              setIsProcessingOrder(true);
+              // Step 3: Verify Signature on Backend
+              const verifyRes = await fetch("/api/verifyPayment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              });
+              
+              if (!verifyRes.ok) throw new Error("Payment verification failed");
+              
+              // Step 4: Save Order to Firebase
+              await saveOrderToFirebase({ orderID, nameSnapshot, phoneSnapshot, addressSnapshot, citySnapshot, stateSnapshot, pincodeSnapshot, cartSnapshot, paymentMethod, paymentStatus: 'Successful', transactionId: response.razorpay_payment_id });
+              
+              // Redirect to WhatsApp
+              window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, "_blank");
+              
+              clearCartAndReset();
+            } catch (err) {
+              console.error("Verification error:", err);
+              alert("Payment verification failed. Please contact support if amount was deducted.");
+            } finally {
+              setIsProcessingOrder(false);
+            }
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response){
+           alert(`Payment Failed: ${response.error.description}`);
+           setIsProcessingOrder(false);
+        });
+        rzp.open();
+        
+      } else {
+        // WhatsApp / COD Flow
+        await saveOrderToFirebase({ orderID, nameSnapshot, phoneSnapshot, addressSnapshot, citySnapshot, stateSnapshot, pincodeSnapshot, cartSnapshot, paymentMethod, paymentStatus: 'Pending', transactionId: null });
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, "_blank");
+        clearCartAndReset();
+        setIsProcessingOrder(false);
+      }
+      
+    } catch (error) {
+      console.error("Error processing order:", error);
+      alert(`❌ Error processing order: ${error.message || "Connection issue"}`);
+      setIsProcessingOrder(false);
+    }
+  };
+
+  const saveOrderToFirebase = async ({ orderID, nameSnapshot, phoneSnapshot, addressSnapshot, citySnapshot, stateSnapshot, pincodeSnapshot, cartSnapshot, paymentMethod, paymentStatus, transactionId }) => {
       const customerDocRef = doc(db, "customers", phoneSnapshot);
       const customerDoc = await getDoc(customerDocRef);
 
@@ -356,18 +431,15 @@ function App() {
         totalAmount: finalTotal,
         paymentMethod: paymentMethod,
         status: 'Pending',
-        paymentStatus: 'Pending',
+        paymentStatus: paymentStatus,
+        transactionId: transactionId || null,
         createdAt: serverTimestamp()
       };
       
       await addDoc(collection(db, "orders"), orderData);
+  };
 
-      // Redirect all payments to WhatsApp for now as requested
-      window.open(
-        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`,
-        "_blank"
-      );
-
+  const clearCartAndReset = () => {
       setCart([]);
       setCustomerDetails({
         name: "",
@@ -380,13 +452,6 @@ function App() {
       });
       setCheckoutStep(1);
       navigate('/');
-      
-    } catch (error) {
-      console.error("Error saving order:", error);
-      alert(`❌ Oops! We couldn't save your order to the database.\n\nError: ${error.message || "Connection issue"}\n\nPlease try again or contact us directly.`);
-    } finally {
-      setIsProcessingOrder(false);
-    }
   };
 
   useEffect(() => {
@@ -467,19 +532,7 @@ function App() {
     };
   }, [isCartOpen]);
 
-  // Razorpay Button Script Injection (Moved to CheckoutPage if needed, or removed here)
-  useEffect(() => {
-    if (customerDetails.paymentMethod === "online") {
-      const container = document.getElementById("rzp-button-container");
-      if (container && !container.hasChildNodes()) {
-        const script = document.createElement("script");
-        script.src = "https://checkout.razorpay.com/v1/payment-button.js";
-        script.setAttribute("data-payment_button_id", "pl_placeholder_id");
-        script.async = true;
-        container.appendChild(script);
-      }
-    }
-  }, [customerDetails.paymentMethod]);
+
   if (!isOnline) {
     return <Offline />;
   }

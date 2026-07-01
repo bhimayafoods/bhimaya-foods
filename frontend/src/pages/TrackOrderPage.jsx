@@ -22,16 +22,16 @@ const TrackOrderPage = () => {
         setLoading(true);
         setSearched(true);
         try {
-            // Add +91 prefix if user didn't enter it, since we save with +91 in Firebase
+            // Search exactly as entered, since the checkout form saves it as entered (usually 10 digits without +91)
             let formattedPhone = phone.trim();
-            if (!formattedPhone.startsWith('+91')) {
-                formattedPhone = `+91${formattedPhone}`;
-            }
+            
+            // Just in case they added +91 in the search but it's saved without it in Firebase
+            let altPhone = formattedPhone.startsWith('+91') ? formattedPhone.replace('+91', '') : `+91${formattedPhone}`;
 
             const ordersRef = collection(db, "orders");
-            // Note: Cannot use orderBy with 'where' on a different field without a composite index. 
-            // So we'll fetch them and sort in JavaScript.
-            const q = query(ordersRef, where("customerPhone", "==", formattedPhone));
+            // We will query for both exact match and alternative match
+            // Firestore 'in' query allows up to 10 values
+            const q = query(ordersRef, where("customerPhone", "in", [formattedPhone, altPhone]));
             
             const querySnapshot = await getDocs(q);
             const fetchedOrders = querySnapshot.docs.map(doc => ({

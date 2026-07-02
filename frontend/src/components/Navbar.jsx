@@ -29,7 +29,7 @@ function Navbar({ cartCount, hideLinks }) {
         )}
 
         {/* Logo */}
-        <div className="flex items-center h-full justify-center flex-1 lg:flex-none">
+        <div className={`flex items-center h-full ${hideLinks ? 'justify-start' : 'justify-center'} flex-1 lg:flex-none`}>
           <Link to="/" className="h-full flex items-center">
             <img
               src={logo}

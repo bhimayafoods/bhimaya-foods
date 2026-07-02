@@ -123,12 +123,28 @@ const OrderInvoice = ({ order }) => {
 
       {/* Totals Section */}
       <div className="flex justify-end mb-8">
-        <div className="w-1/2">
-          <div className="flex justify-between items-center text-xl font-bold border-t-2 border-gray-800 pt-2">
+        <div className="w-1/2 text-sm">
+          <div className="flex justify-between items-center border-t border-gray-300 pt-2 pb-1">
+            <span>Items Subtotal</span>
+            <span>Rs. {order.subtotal || order.items?.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0) || 0}.00</span>
+          </div>
+          {((order.deliveryCharge !== undefined ? order.deliveryCharge : (order.delivery !== undefined ? order.delivery : 50)) > 0) && (
+            <div className="flex justify-between items-center pb-1">
+              <span>Delivery Charges</span>
+              <span>Rs. {order.deliveryCharge !== undefined ? order.deliveryCharge : (order.delivery !== undefined ? order.delivery : 50)}.00</span>
+            </div>
+          )}
+          {(order.paymentMethod === 'whatsapp' || (order.paymentMethod && order.paymentMethod.toLowerCase() === 'cod') || order.codFee > 0) && (
+            <div className="flex justify-between items-center pb-1 font-semibold text-orange-700">
+              <span>Platform Fee (COD)</span>
+              <span>Rs. {order.codFee !== undefined ? order.codFee : 9}.00</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center text-lg font-bold border-t-2 border-gray-800 pt-2">
             <span>NET TOTAL (In Value)</span>
             <span>Rs. {order.totalAmount || order.total}.00</span>
           </div>
-          <div className="text-right text-xs mt-4 italic">
+          <div className="text-right text-[10px] mt-4 italic text-gray-500">
             Whether tax is payable under reverse charge - No
           </div>
         </div>

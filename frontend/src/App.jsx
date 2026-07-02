@@ -430,6 +430,7 @@ function App() {
         })),
         subtotal: total,
         deliveryCharge: delivery,
+        codFee: paymentMethod === 'whatsapp' ? COD_FEE : 0,
         totalAmount: finalTotal,
         paymentMethod: paymentMethod,
         status: 'Pending',

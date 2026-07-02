@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import OrderInvoice from '../components/admin/OrderInvoice';
 
 const TrackOrderPage = () => {
     const [phone, setPhone] = useState('');
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
+    const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -144,25 +147,49 @@ const TrackOrderPage = () => {
                                             </ul>
                                         </div>
 
-                                        {order.status === 'Shipped' && order.shiprocketOrderId && (
-                                            <div className="mt-6 flex justify-end">
+                                        <div className="mt-6 flex flex-wrap gap-3 justify-end items-center">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedOrderForInvoice(order);
+                                                    setTimeout(() => {
+                                                        window.print();
+                                                        setTimeout(() => setSelectedOrderForInvoice(null), 1000);
+                                                    }, 300);
+                                                }}
+                                                className="inline-flex items-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold py-2 px-6 rounded-lg text-sm transition-colors cursor-pointer active:scale-95"
+                                            >
+                                                📄 Download Invoice
+                                            </button>
+                                            
+                                            {(order.awbNumber || order.shiprocketOrderId) ? (
                                                 <a 
-                                                    href={`https://bhimayafoods.shiprocket.co/tracking/${order.shiprocketOrderId}`} 
+                                                    href={order.awbNumber ? `https://www.shiprocket.in/shipment-tracking/${order.awbNumber}` : `https://bhimayafoods.shiprocket.co/tracking/${order.shiprocketOrderId}`} 
                                                     target="_blank" 
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                                                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors"
                                                 >
-                                                    Track Shipment
+                                                    🚚 Track Shipment
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                                 </a>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <button
+                                                    disabled
+                                                    className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 font-bold py-2 px-6 rounded-lg text-sm cursor-not-allowed border border-gray-200"
+                                                >
+                                                    🚚 Admin will add tracking enable soon
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         )}
                     </div>
                 )}
+            {selectedOrderForInvoice && createPortal(
+                <OrderInvoice order={selectedOrderForInvoice} />,
+                document.body
+            )}
             </div>
         </div>
     );

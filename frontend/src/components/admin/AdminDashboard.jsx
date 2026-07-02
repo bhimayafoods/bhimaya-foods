@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { signOut } from 'firebase/auth';
@@ -1473,11 +1474,6 @@ const AdminDashboard = () => {
                                     75% { transform: translateX(5px); }
                                 }
                                 .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
-                                @media print {
-                                    body * { visibility: hidden; }
-                                    #invoice-to-print, #invoice-to-print * { visibility: visible; }
-                                    #invoice-to-print { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-                                }
                             `}} />
 
                             {ordersLoading ? (
@@ -1590,12 +1586,15 @@ const AdminDashboard = () => {
                                                             </div>
                                                         </td>
                                                         <td className="p-3 text-sm font-bold">
-                                                            <div>
+                                                            <div className="flex flex-col gap-1 items-start">
                                                                 <span className={`px-2 py-1 border rounded text-xs ${(order.paymentStatus || 'Pending') === 'Successful' ? 'bg-green-50 text-green-700 border-green-200' :
                                                                     (order.paymentStatus || 'Pending') === 'Failed' ? 'bg-red-50 text-red-700 border-red-200' :
                                                                         'bg-yellow-50 text-yellow-700 border-yellow-200'
                                                                     }`}>
                                                                     💰 {order.paymentStatus || 'Pending'}
+                                                                </span>
+                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border inline-block text-center uppercase tracking-tight ${order.paymentMethod === 'whatsapp' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                                                    {order.paymentMethod === 'whatsapp' ? '💵 COD' : '💳 Online'}
                                                                 </span>
                                                             </div>
                                                         </td>
@@ -1661,6 +1660,22 @@ const AdminDashboard = () => {
                                                                 >
                                                                     📄 Invoice
                                                                 </button>
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (window.confirm(`⚠️ Permanently delete order ${order.orderID || order.id}? This cannot be undone.`)) {
+                                                                            try {
+                                                                                await deleteDoc(doc(db, "orders", order.id));
+                                                                                alert("✅ Order deleted successfully!");
+                                                                            } catch (error) {
+                                                                                console.error("Error deleting order:", error);
+                                                                                alert("❌ Failed to delete order.");
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    className="mt-1 w-full bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-2 py-1 rounded text-[10px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
+                                                                >
+                                                                    🗑️ Delete Order
+                                                                </button>
                                                                 {((pendingUpdates[order.id]?.paymentStatus || order.paymentStatus) === 'Successful') && (
                                                                     <input
                                                                         type="text"
@@ -1702,10 +1717,9 @@ const AdminDashboard = () => {
                                     </table>
                                 </div>
                             )}
-                            {selectedOrderForInvoice && (
-                                <div className="hidden print:block">
-                                    <OrderInvoice order={selectedOrderForInvoice} />
-                                </div>
+                            {selectedOrderForInvoice && createPortal(
+                                <OrderInvoice order={selectedOrderForInvoice} />,
+                                document.body
                             )}
                         </div>
                     )}

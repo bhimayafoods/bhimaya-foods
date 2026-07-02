@@ -31,3 +31,19 @@ img {
   user-drag: none;
   pointer-events: auto; /* Ensure they can still be clicked! */
 }
+
+/* Print Styles: Hide the main React app root and display only the invoice container */
+@media print {
+  body > :not(#invoice-to-print) {
+    display: none !important;
+  }
+  #invoice-to-print {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+}

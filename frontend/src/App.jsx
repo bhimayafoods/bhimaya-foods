@@ -453,7 +453,6 @@ function App() {
         paymentMethod: "online"
       });
       setCheckoutStep(1);
-      navigate('/');
   };
 
   useEffect(() => {

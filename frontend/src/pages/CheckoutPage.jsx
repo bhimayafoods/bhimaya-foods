@@ -66,10 +66,7 @@ const CheckoutPage = ({
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (!Array.isArray(cart) || cart.length === 0) {
-      navigate('/cart');
-    }
-  }, [cart, navigate]);
+  }, []);
 
   useEffect(() => {
     if (total > codLimit && customerDetails.paymentMethod === 'whatsapp') {
